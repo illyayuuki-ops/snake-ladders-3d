@@ -40,6 +40,7 @@ management:
 
 ---
 # ---- Production datasource: PostgreSQL ----
+# Env vars (optional): SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
 # Run with: java -jar snakes-ladders-3d.jar --spring.profiles.active=postgres
 spring:
   config:

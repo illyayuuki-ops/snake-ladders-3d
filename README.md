@@ -26,11 +26,16 @@ The Spring Boot app serves **both** the REST/WebSocket API **and** the static UI
 
 ## 🚀 Run it (H2, no setup)
 
+### Local (backend + frontend)
+
 ```bash
+# terminal 1 — start backend
 cd backend
 mvn spring-boot:run
-# open http://localhost:8080
+# app starts on http://localhost:8080
 ```
+
+Then open `http://localhost:8080` in your browser. The backend serves the frontend statically, so no extra server is needed.
 
 The app seeds a few demo players so the leaderboard isn't empty.
 H2 console: `http://localhost:8080/h2-console` (JDBC `jdbc:h2:mem:snakesladders`).
@@ -39,16 +44,38 @@ H2 console: `http://localhost:8080/h2-console` (JDBC `jdbc:h2:mem:snakesladders`
 > `mvn -Dmaven.resolver.transport=wagon -Dmaven.artifact.threads=1 …` (the sandbox here needed this).
 
 ### Run the packaged jar
+
 ```bash
+cd backend
 mvn package                 # produces target/snakes-ladders-3d.jar
 java -jar target/snakes-ladders-3d.jar
+# open http://localhost:8080
+```
+
+### Docker Compose (all services)
+
+```bash
+docker compose up --build
+# frontend -> http://localhost:8000
+# backend  -> http://localhost:8080
+# db       -> localhost:5432
 ```
 
 ### PostgreSQL (production)
+
 ```bash
 docker compose up -d db    # starts PostgreSQL on :5432 (db/snakesladders)
 mvn spring-boot:run -Dspring-boot.run.profiles=postgres
 # or: java -jar target/snakes-ladders-3d.jar --spring.profiles.active=postgres
+```
+
+You can also override the datasource via environment variables when running the backend container or jar:
+
+```bash
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/snakesladders \
+SPRING_DATASOURCE_USERNAME=postgres \
+SPRING_DATASOURCE_PASSWORD=postgres \
+java -jar target/snakes-ladders-3d.jar --spring.profiles.active=postgres
 ```
 
 ---
@@ -120,3 +147,11 @@ Returns ranked entries with `winRate`, `totalWins`, `fastestWinTurns`.
 2. **Vs AI:** you vs. one bot. **Local:** 2–4 names share the screen. **Online:** create a room, share the 6-digit code; friends join from another device.
 3. Click **🎲 Roll Dice** on your turn. Land on 🪜 ladders / 🐍 snakes, grab ⚡ power-ups, and race to the final tile. Exact roll required — overshoot and you bounce back!
 4. In `CHAOS`, the board rebuilds every 3 turns. In `SPEED`, it's a 50-tile sprint.
+
+---
+
+## 🛠 Troubleshooting
+
+- **Port already in use:** change `server.port` in `application.yml` or stop the process using `:8080`.
+- **CORS / WebSocket errors:** make sure you open the app via `http://...` and not `file://...`.
+- **Database errors:** the default profile uses in-memory H2. For PostgreSQL, set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` environment variables, or use `--spring.profiles.active=postgres`.

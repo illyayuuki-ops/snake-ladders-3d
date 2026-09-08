@@ -19,6 +19,7 @@
         joinCode: null,
         local: false, engine: null, stateQueue: null, joining: false
     };
+    let stateQueue = null;
 
     /* ---------------- audio ---------------- */
     function ensureAudio() {
@@ -106,7 +107,7 @@
 
     function scheduleNext(st) {
         const startBtn = $("btn-start-online");
-        if (startBtn) startBtn.classList.toggle("hidden", !(G.online && st.status === "WAITING"));
+        if (startBtn) startBtn.classList.toggle("hidden", st.status !== "WAITING");
         if (st.status !== "PLAYING") {
             setRollLabel(st.status === "WAITING" ? "Waiting…" : "Finished", false);
             return;
@@ -114,15 +115,19 @@
         const cur = st.players.find(p => p.name === st.currentPlayerName);
         if (!cur) return;
         if (cur.ai) {
-            setRollLabel("🤖 " + cur.name + "…", false);
-            const amHost = !G.online || (st.players[0] && st.players[0].name === G.myName);
-            if (amHost) {
+            if (!G.online) {
+                setRollLabel("🤖 " + cur.name + "…", false);
                 const expected = cur.name;
-                setTimeout(() => {
+                const tryRoll = () => {
                     if (!G.busy && G.lastState && G.lastState.currentPlayerName === expected) {
                         doRoll(expected);
+                    } else {
+                        setTimeout(tryRoll, 200);
                     }
-                }, 780);
+                };
+                setTimeout(tryRoll, 600);
+            } else {
+                setRollLabel("⏳ " + cur.name + "…", false);
             }
             return;
         }
@@ -326,6 +331,9 @@
         if (join && G.joinCode) {
             G.online = true; G.mode = "ONLINE"; G.variant = cfg.variant; G.joining = true;
             try {
+                G.api._onSync = (code, st) => {
+                    if (G.code === code) applyState(st, false);
+                };
                 await G.api.connectWs();
                 G.api.subscribeRoom(G.joinCode, onWs);
                 G.code = G.joinCode;
@@ -377,11 +385,15 @@
             if (cfg.mode === "ONLINE") {
                 G.online = true;
                 try {
+                    G.api._onSync = (code, st) => {
+                        if (G.code === code) applyState(st, false);
+                    };
                     await G.api.connectWs();
                     G.api.subscribeRoom(G.code, onWs);
                     toast("Room " + st.roomCode + " — share the code!");
                 } catch (e) { toast("WS unavailable, playing via REST"); G.online = false; }
                 applyState(st, false);
+                if (!G.online) scheduleNext(st);
             } else {
                 G.online = false;
                 applyState(st, false);
@@ -499,7 +511,7 @@
                     if (!G.busy) {
                         G.board.build(G.lastState);
                     } else {
-                        t = setTimeout(() => { if (G.lastState) G.board.build(G.lastState); }, 400);
+                        t = setTimeout(() => { if (G.lastState) G.board.build(G.lastState); }, 1500);
                     }
                 }
             }, 250);
@@ -521,6 +533,10 @@
                 if (G.code && G.online) {
                     G.api.sendRoom(G.code, "START", G.myName);
                     toast("Game started!");
+                } else if (G.code) {
+                    G.api.start(G.code, G.myName)
+                        .then(st => { applyState(st, false); })
+                        .catch(err => toast("Error: " + err.message));
                 }
             };
         }

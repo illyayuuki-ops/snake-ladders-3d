@@ -8,7 +8,9 @@
 
     class Api {
         constructor(base) {
-            this.base = base || "/api";
+            const baseOrigin = (location.protocol === 'file:' ? 'http://localhost:8080' : `${location.protocol}//${location.host}`);
+            this.base = base || baseOrigin + '/api';
+            this.wsBase = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws';
             this.stomp = null;
             this.connected = false;
             this._reconnectAttempts = 0;
@@ -54,7 +56,7 @@
             return new Promise((resolve, reject) => {
                 if (this.connected) return resolve();
                 try {
-                    const sock = new SockJS("/ws");
+                    const sock = new SockJS(this.wsBase);
                     this.stomp = Stomp.over(sock);
                     this.stomp.debug = null;
                     this.stomp.connect({},

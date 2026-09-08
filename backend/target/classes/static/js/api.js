@@ -8,12 +8,15 @@
 
     class Api {
         constructor(base) {
-            this.base = base || "/api";
+            const baseOrigin = (location.protocol === 'file:' ? 'http://localhost:8080' : `${location.protocol}//${location.host}`);
+            this.base = base || baseOrigin + '/api';
+            this.wsBase = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws';
             this.stomp = null;
             this.connected = false;
             this._reconnectAttempts = 0;
             this._maxReconnect = 8;
             this._subscribers = new Map();
+            this._onSync = null;
         }
 
         /* ---------------- REST ---------------- */
@@ -39,7 +42,7 @@
         createGame(req) { return this.post("/games", req); }
         getGame(code) { return this.get("/games/" + enc(code)); }
         join(code, name, ai) { return this.post("/games/" + enc(code) + "/join?name=" + enc(name) + "&ai=" + !!ai, {}); }
-        start(code) { return this.post("/games/" + enc(code) + "/start", {}); }
+        start(code, player) { return this.post("/games/" + enc(code) + "/start?player=" + enc(player), {}); }
         roll(code, player) { return this.post("/games/" + enc(code) + "/roll?player=" + enc(player), {}); }
         powerup(code, player, type, target) {
             const p = { type }; if (target) p.target = target;
@@ -52,7 +55,7 @@
             return new Promise((resolve, reject) => {
                 if (this.connected) return resolve();
                 try {
-                    const sock = new SockJS("/ws");
+                    const sock = new SockJS(this.wsBase);
                     this.stomp = Stomp.over(sock);
                     this.stomp.debug = null;
                     this.stomp.connect({},
@@ -60,6 +63,7 @@
                             this.connected = true;
                             this._reconnectAttempts = 0;
                             this._resubscribeAll();
+                            this._syncStates();
                             resolve();
                         },
                         (err) => {
@@ -68,6 +72,14 @@
                             reject(err);
                         });
                 } catch (e) { reject(e); }
+            });
+        }
+
+        _syncStates() {
+            this._subscribers.forEach((_, code) => {
+                this.getGame(code).then(st => {
+                    this._onSync && this._onSync(code, st);
+                }).catch(() => {});
             });
         }
 
