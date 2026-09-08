@@ -54,7 +54,6 @@
         </div>
         <div class="ctrl-buttons">
             <button id="btn-roll" class="primary">🎲 Roll Dice</button>
-            <button id="btn-start-online" class="secondary hidden">▶ Start Game</button>
             <div id="powerups" class="powerups"></div>
         </div>
     </section>
@@ -89,17 +88,8 @@
     <!-- ======================= SETUP MODAL ======================= -->
     <div id="setup-modal" class="overlay">
         <div class="setup-card glass">
-            <h2>New Game</h2>
+            <h2>Local Game</h2>
             <div class="field">
-                <label>Mode</label>
-                <div class="seg" id="seg-mode">
-                    <button data-mode="VS_AI" class="active">Vs AI</button>
-                    <button data-mode="LOCAL">Local (2-4)</button>
-                    <button data-mode="ONLINE">Online Room</button>
-                </div>
-            </div>
-
-            <div class="field" id="field-variant">
                 <label>Board Variant</label>
                 <div class="seg" id="seg-variant">
                     <button data-variant="CLASSIC" class="active">Classic</button>
@@ -108,35 +98,11 @@
                     <button data-variant="SPEED">Speed</button>
                 </div>
             </div>
-
-            <div class="field" id="field-difficulty">
-                <label>AI Difficulty</label>
-                <div class="seg" id="seg-difficulty">
-                    <button data-diff="EASY" class="active">Easy</button>
-                    <button data-diff="SMART">Smart</button>
-                </div>
-            </div>
-
             <div class="field">
-                <label>Your Name</label>
-                <input id="input-name" type="text" maxlength="18" placeholder="Player 1" value="Player 1" />
-            </div>
-
-            <div class="field" id="field-local-count">
-                <label>Local Players <span id="local-count-label">2</span></label>
+                <label>Players <span id="local-count-label">2</span></label>
                 <input id="input-local-count" type="range" min="2" max="4" value="2" />
                 <div id="local-names"></div>
             </div>
-
-            <div class="field hidden" id="field-room">
-                <label>Room Code</label>
-                <div class="room-row">
-                    <input id="input-room" type="text" maxlength="8" placeholder="6-digit code" />
-                    <button id="btn-join-room" class="secondary">Join</button>
-                </div>
-                <p class="hint">Create a room by starting the game — share the generated code with friends.</p>
-            </div>
-
             <div id="setup-error" class="setup-error"></div>
             <button id="btn-start" class="primary big">Start Game</button>
         </div>
@@ -146,8 +112,6 @@
     <div id="toast" class="hidden"></div>
 
     <!-- ======================= LIBS + APP ======================= -->
-    <script src="/vendor/sockjs.min.js"></script>
-    <script src="/vendor/stomp.min.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/board3d.js"></script>
     <script src="/js/dice.js"></script>

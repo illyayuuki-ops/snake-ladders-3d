@@ -1,6 +1,5 @@
 /* ============================================================
-   game.js — controller: setup, REST + WebSocket play, 3D board,
-   dice, AI auto-play, power-ups, chaos reshuffle, HUD, audio.
+   game.js — controller: local setup, 3D board, dice, HUD, audio
    ============================================================ */
 (function () {
     "use strict";
@@ -11,13 +10,12 @@
     const G = {
         api: new Api(),
         board: null, dice: null,
-        code: null, mode: null, variant: null, myName: null,
-        online: false, busy: false, lastState: null,
+        mode: null, variant: null,
+        busy: false, lastState: null,
         built: false, builtCode: null, builtSize: 0,
         soundOn: true, audio: null,
-        config: { mode: "VS_AI", variant: "CLASSIC", difficulty: "EASY", name: "Player 1", localCount: 2, localNames: [] },
-        joinCode: null,
-        local: false, engine: null, stateQueue: null, joining: false
+        config: { variant: "CLASSIC", localCount: 2, localNames: [] },
+        engine: null, stateQueue: null
     };
     let stateQueue = null;
 
@@ -98,7 +96,7 @@
             return;
         }
         if (st.status === "FINISHED") {
-            if (G.local) saveLocalResult(st);
+            saveLocalResult(st);
             onWin(st);
             return;
         }
@@ -106,8 +104,6 @@
     }
 
     function scheduleNext(st) {
-        const startBtn = $("btn-start-online");
-        if (startBtn) startBtn.classList.toggle("hidden", st.status !== "WAITING");
         if (st.status !== "PLAYING") {
             setRollLabel(st.status === "WAITING" ? "Waiting…" : "Finished", false);
             return;
@@ -115,28 +111,19 @@
         const cur = st.players.find(p => p.name === st.currentPlayerName);
         if (!cur) return;
         if (cur.ai) {
-            if (!G.online) {
-                setRollLabel("🤖 " + cur.name + "…", false);
-                const expected = cur.name;
-                const tryRoll = () => {
-                    if (!G.busy && G.lastState && G.lastState.currentPlayerName === expected) {
-                        doRoll(expected);
-                    } else {
-                        setTimeout(tryRoll, 200);
-                    }
-                };
-                setTimeout(tryRoll, 600);
-            } else {
-                setRollLabel("⏳ " + cur.name + "…", false);
-            }
+            setRollLabel("🤖 " + cur.name + "…", false);
+            const expected = cur.name;
+            const tryRoll = () => {
+                if (!G.busy && G.lastState && G.lastState.currentPlayerName === expected) {
+                    doRoll(expected);
+                } else {
+                    setTimeout(tryRoll, 200);
+                }
+            };
+            setTimeout(tryRoll, 600);
             return;
         }
-        if (G.online) {
-            if (cur.name === G.myName) setRollLabel("🎲 Roll Dice", true);
-            else setRollLabel("⏳ " + cur.name + "…", false);
-        } else {
-            setRollLabel("🎲 " + cur.name + ", roll!", true);
-        }
+        setRollLabel("🎲 " + cur.name + ", roll!", true);
         renderPowerups(st, cur);
     }
 
@@ -145,17 +132,8 @@
         if (G.busy || !G.code) return;
         setRollLabel("Rolling…", false);
         sound("roll");
-        if (G.local) {
-            const st = G.engine.roll(player);
-            applyState(st, true);
-        } else if (G.online) {
-            const sent = G.api.sendRoom(G.code, "ROLL", player);
-            if (!sent) toast("Not connected to server.");
-        } else {
-            G.api.roll(G.code, player)
-                .then(st => applyState(st, true))
-                .catch(err => toast("Error: " + err.message));
-        }
+        const st = G.engine.roll(player);
+        applyState(st, true);
     }
 
     function usePowerup(type) {
@@ -165,17 +143,8 @@
         if (!cur) return;
         const target = currentLeader(st, cur);
         setRollLabel("Using…", false);
-        if (G.local) {
-            const s = G.engine.usePowerUp(cur.name, type, target ? target.name : null);
-            applyState(s, false);
-        } else if (G.online) {
-            const sent = G.api.sendRoom(G.code, "USE_POWERUP", cur.name, { type, target: target ? target.name : null });
-            if (!sent) toast("Not connected to server.");
-        } else {
-            G.api.powerup(G.code, cur.name, type, target ? target.name : null)
-                .then(s => applyState(s, false))
-                .catch(err => toast("Error: " + err.message));
-        }
+        const s = G.engine.usePowerUp(cur.name, type, target ? target.name : null);
+        applyState(s, false);
     }
 
     function currentLeader(st, self) {
@@ -189,13 +158,12 @@
 
     /* ---------------- rendering ---------------- */
     function renderState(st) {
-        $("mode-label").textContent = (G.online ? "Online · " : "") + st.mode + (st.difficulty ? " · " + st.difficulty : "");
+        $("mode-label").textContent = st.mode + (st.difficulty ? " · " + st.difficulty : "");
         $("room-code").textContent = st.roomCode || "—";
         $("turn-count").textContent = st.turnCount;
         $("variant-label").textContent = st.variant;
         G.dice.snap(st.dice || 1);
 
-        // players
         const ul = $("players-list"); ul.innerHTML = "";
         st.players.forEach(p => {
             const li = document.createElement("li");
@@ -214,7 +182,6 @@
             ul.appendChild(li);
         });
 
-        // log (last 40)
         const log = $("log-list"); log.innerHTML = "";
         (st.log || []).slice(-40).forEach(line => {
             const li = document.createElement("li"); li.textContent = line; log.appendChild(li);
@@ -225,7 +192,6 @@
     function renderPowerups(st, cur) {
         const wrap = $("powerups"); wrap.innerHTML = "";
         if (!cur || cur.ai) return;
-        if (G.online && cur.name !== G.myName) return;
         if (cur.hasDouble) {
             const b = document.createElement("button"); b.className = "pw-btn"; b.textContent = "🎲 Double Roll";
             b.onclick = () => usePowerup("DOUBLE"); wrap.appendChild(b);
@@ -256,10 +222,7 @@
 
     /* ---------------- leaderboard ---------------- */
     function loadLeaderboard(by) {
-        if (G.local) {
-            renderLocalLeaderboard(by);
-            return;
-        }
+        renderLocalLeaderboard(by);
         G.api.leaderboard(by, 10).then(list => {
             const ol = $("leaderboard-list"); ol.innerHTML = "";
             list.forEach(e => {
@@ -272,7 +235,6 @@
         }).catch(() => renderLocalLeaderboard(by));
     }
 
-    /* ---------- offline (localStorage) leaderboard ---------- */
     function loadLocalLeaderboard() {
         try { return JSON.parse(localStorage.getItem("sl3d_lb") || "[]"); } catch (e) { return []; }
     }
@@ -304,137 +266,44 @@
         });
     }
 
-    /* ---------------- websocket ---------------- */
-    function onWs(msg) {
-        if (msg.type === "STATE" && msg.state) {
-            G.joining = false;
-            applyState(msg.state, !!msg.state.lastEvent);
-        } else if (msg.type === "ERROR") {
-            if (G.joining) {
-                G.joining = false;
-                $("setup-modal").classList.remove("hidden");
-            }
-            toast("⚠ " + msg.message);
-        } else if (msg.type === "INFO") {
-            toast(msg.message);
-        }
-    }
-
     /* ---------------- start game ---------------- */
-    async function startGame(join) {
+    async function startGame() {
         ensureAudio();
         const cfg = G.config;
-        const name = ($("input-name").value || "Player 1").trim() || "Player 1";
-        G.myName = name;
-        try { await G.api.ensurePlayer(name); } catch (e) {}
+        const names = cfg.localNames.filter(n => n && n.trim());
+        if (names.length < 2) { toast("Need at least 2 players"); return; }
+        for (const n of names) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
-        if (join && G.joinCode) {
-            G.online = true; G.mode = "ONLINE"; G.variant = cfg.variant; G.joining = true;
-            try {
-                G.api._onSync = (code, st) => {
-                    if (G.code === code) applyState(st, false);
-                };
-                await G.api.connectWs();
-                G.api.subscribeRoom(G.joinCode, onWs);
-                G.code = G.joinCode;
-                G.api.sendRoom(G.joinCode, "JOIN", name);
-                toast("Joined room " + G.joinCode);
-                $("setup-modal").classList.add("hidden");
-            } catch (e) {
-                toast("Join error: " + e.message);
-                $("setup-modal").classList.remove("hidden");
-                G.joining = false;
-            }
-            return;
-        }
-
-        // Vs AI / Local run fully client-side (no backend required).
-        if (cfg.mode !== "ONLINE") {
-            G.online = false; G.local = true; G.code = "LOCAL";
-            G.mode = cfg.mode; G.variant = cfg.variant; G.built = false;
-            const players = (cfg.mode === "VS_AI")
-                ? [{ name, ai: false, difficulty: cfg.difficulty, color: PALETTE[0] },
-                   { name: "Bot", ai: true, difficulty: cfg.difficulty, color: PALETTE[1] }]
-                : cfg.localNames.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
-            G.engine = new LocalEngine();
-            const st = G.engine.create({ mode: cfg.mode, variant: cfg.variant, difficulty: cfg.difficulty, players });
-            $("setup-modal").classList.add("hidden");
-            applyState(st, false);
-            scheduleNext(st);
-            return;
-        }
-
-        const req = { mode: cfg.mode, variant: cfg.variant, difficulty: cfg.difficulty, players: [] };
-        if (cfg.mode === "VS_AI") {
-            req.players = [
-                { name, ai: false, difficulty: cfg.difficulty, color: PALETTE[0] },
-                { name: "Bot", ai: true, difficulty: cfg.difficulty, color: PALETTE[1] }
-            ];
-        } else if (cfg.mode === "LOCAL") {
-            req.players = cfg.localNames.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
-        } else { // ONLINE create (host + bots so it is playable solo too)
-            req.hostUsername = name;
-            req.players = [{ name, ai: false, color: PALETTE[0] }];
-            req.players.push({ name: "Bot", ai: true, difficulty: cfg.difficulty, color: PALETTE[1] });
-        }
-
-        try {
-            const st = await G.api.createGame(req);
-            G.code = st.roomCode; G.mode = cfg.mode; G.variant = cfg.variant;
-            $("setup-modal").classList.add("hidden");
-            if (cfg.mode === "ONLINE") {
-                G.online = true;
-                try {
-                    G.api._onSync = (code, st) => {
-                        if (G.code === code) applyState(st, false);
-                    };
-                    await G.api.connectWs();
-                    G.api.subscribeRoom(G.code, onWs);
-                    toast("Room " + st.roomCode + " — share the code!");
-                } catch (e) { toast("WS unavailable, playing via REST"); G.online = false; }
-                applyState(st, false);
-                if (!G.online) scheduleNext(st);
-            } else {
-                G.online = false;
-                applyState(st, false);
-                scheduleNext(st);
-            }
-        } catch (e) {
-            $("setup-error").textContent = e.message;
-        }
+        G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false;
+        const players = names.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
+        G.engine = new LocalEngine();
+        const st = G.engine.create({ mode: "LOCAL", variant: cfg.variant, difficulty: "EASY", players });
+        $("setup-modal").classList.add("hidden");
+        applyState(st, false);
+        scheduleNext(st);
     }
 
     /* ---------------- setup modal UI ---------------- */
     function setupModalWiring() {
-        const seg = (id, key, cast) => {
+        const seg = (id, key) => {
             $(id).querySelectorAll("button").forEach(b => {
                 b.onclick = () => {
                     $(id).querySelectorAll("button").forEach(x => x.classList.remove("active"));
                     b.classList.add("active");
-                    G.config[key] = cast ? cast(b.dataset[Object.keys(b.dataset)[0]]) : b.dataset[Object.keys(b.dataset)[0]];
-                    refreshSetupFields();
+                    G.config[key] = b.dataset[key.split("-")[0]] || b.dataset.variant || b.dataset.diff;
                 };
             });
         };
-        seg("seg-mode", "mode");
         seg("seg-variant", "variant");
-        seg("seg-difficulty", "difficulty");
 
-        $("input-name").oninput = e => G.config.name = e.target.value;
         $("input-local-count").oninput = e => {
             G.config.localCount = +e.target.value;
             $("local-count-label").textContent = e.target.value;
             renderLocalNames();
         };
-        $("btn-join-room").onclick = () => {
-            const v = ($("input-room").value || "").trim().toUpperCase();
-            if (!v) { $("setup-error").textContent = "Enter a room code to join."; return; }
-            G.joinCode = v; startGame(true);
-        };
-        $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(false); };
+        $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();
 
-        // leaderboard tabs
         $("leaderboard-panel").querySelectorAll(".lb-tabs button").forEach(b => {
             b.onclick = () => {
                 $("leaderboard-panel").querySelectorAll(".lb-tabs button").forEach(x => x.classList.remove("active"));
@@ -450,16 +319,7 @@
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
 
-        refreshSetupFields();
         renderLocalNames();
-    }
-
-    function refreshSetupFields() {
-        const m = G.config.mode;
-        $("field-difficulty").classList.toggle("hidden", m === "LOCAL");
-        $("field-local-count").classList.toggle("hidden", m !== "LOCAL");
-        $("field-room").classList.toggle("hidden", m !== "ONLINE");
-        $("field-variant").classList.toggle("hidden", false);
     }
 
     function renderLocalNames() {
@@ -527,20 +387,6 @@
         resizeWiring();
         loadLeaderboard("winrate");
         $("btn-roll").onclick = () => doRoll(G.lastState ? G.lastState.currentPlayerName : null);
-        const startBtn = $("btn-start-online");
-        if (startBtn) {
-            startBtn.onclick = () => {
-                if (G.code && G.online) {
-                    G.api.sendRoom(G.code, "START", G.myName);
-                    toast("Game started!");
-                } else if (G.code) {
-                    G.api.start(G.code, G.myName)
-                        .then(st => { applyState(st, false); })
-                        .catch(err => toast("Error: " + err.message));
-                }
-            };
-        }
-        // sensible default camera
         G.board.setCamera(58, 0, 1);
     });
 })();

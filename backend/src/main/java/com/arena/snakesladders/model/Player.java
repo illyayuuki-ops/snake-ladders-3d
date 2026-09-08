@@ -1,12 +1,9 @@
 package com.arena.snakesladders.model;
 
-import com.arena.snakesladders.model.enums.GameMode;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Persistent player / user profile.
@@ -37,10 +34,6 @@ public class Player {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    @JsonIgnore
-    @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<GameHistory> history = new ArrayList<>();
 
     public Player() {
     }
@@ -103,13 +96,5 @@ public class Player {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public List<GameHistory> getHistory() {
-        return history;
-    }
-
-    public void setHistory(List<GameHistory> history) {
-        this.history = history;
     }
 }

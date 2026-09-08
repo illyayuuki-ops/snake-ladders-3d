@@ -1,12 +1,12 @@
 # 🐍🪜 3D Snakes & Ladders — Arena Edition
 
-A full-stack, responsive, **3D** Snakes & Ladders game.
+A responsive, **3D** Snakes & Ladders game for 2–4 local players.
 
-* **Frontend:** HTML5, vanilla ES6 JavaScript, CSS 3D transforms (`perspective`, `rotateX/Y`, `preserve-3d`), Tailwind (CDN, progressive), WebSockets (SockJS + STOMP).
-* **Backend:** Java 11 + Spring Boot (REST + WebSocket/STOMP), Spring Data JPA / Hibernate.
-* **Database:** H2 (default, zero-setup) or PostgreSQL (production profile).
+* **Frontend:** HTML5, vanilla ES6 JavaScript, CSS 3D transforms (`perspective`, `rotateX/Y`, `preserve-3d`), Tailwind (CDN).
+* **Backend:** Java 11 + Spring Boot (player profiles + leaderboard only).
+* **Database:** H2 (default, zero-setup) or PostgreSQL (optional).
 
-The Spring Boot app serves **both** the REST/WebSocket API **and** the static UI from a single port (`:8080`), so there is nothing to wire up — open the app and play.
+The Spring Boot app serves the REST API and static UI from a single port (`:8080`).
 
 ---
 
@@ -14,28 +14,23 @@ The Spring Boot app serves **both** the REST/WebSocket API **and** the static UI
 
 | Area | What you get |
 |------|--------------|
-| **Game modes** | Vs. AI (1 human vs. 1 bot, Easy/Smart), Local (2–4 humans, one screen), Online (room-code multiplayer over WebSocket) |
+| **Game modes** | Local (2–4 humans, one screen) |
 | **Board variants** | `CLASSIC` (100 tiles), `POWERUP` (collectible 🛡 Shield / 🎲 Double / ❄ Freeze), `CHAOS` (snakes & ladders reshuffle every 3 turns), `SPEED` (50 tiles, dense ladders) |
 | **3D UI** | Tilted/perspective 3D board, drag-to-rotate, scroll/pinch-to-zoom, floating ladders & snakes, standing pawns |
 | **Animations** | Tumbling 3D dice, tokens that slide tile-by-tile and climb/slide 3D ladders & snakes, chaos reshuffle spin |
 | **HUD** | Glassmorphism overlay: turn indicator, live player stats, scrolling game log, 🏆 leaderboard, audio toggle |
-| **Edge cases** | Exact-roll bounce-back past tile 100, player disconnect → AI auto-fill, full CRUD + leaderboard |
-| **Persistence** | Player profiles, game history, persisted game-state snapshots, leaderboard by win-rate / total wins / fastest win |
+| **Edge cases** | Exact-roll bounce-back past tile 100 |
+| **Persistence** | Player profiles, leaderboard by win-rate / total wins / fastest win |
 
 ---
 
 ## 🚀 Run it (H2, no setup)
 
-### Local (backend + frontend)
-
 ```bash
-# terminal 1 — start backend
 cd backend
 mvn spring-boot:run
-# app starts on http://localhost:8080
+# open http://localhost:8080
 ```
-
-Then open `http://localhost:8080` in your browser. The backend serves the frontend statically, so no extra server is needed.
 
 The app seeds a few demo players so the leaderboard isn't empty.
 H2 console: `http://localhost:8080/h2-console` (JDBC `jdbc:h2:mem:snakesladders`).
@@ -61,7 +56,7 @@ docker compose up --build
 # db       -> localhost:5432
 ```
 
-### PostgreSQL (production)
+### PostgreSQL (optional)
 
 ```bash
 docker compose up -d db    # starts PostgreSQL on :5432 (db/snakesladders)
@@ -69,7 +64,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgres
 # or: java -jar target/snakes-ladders-3d.jar --spring.profiles.active=postgres
 ```
 
-You can also override the datasource via environment variables when running the backend container or jar:
+You can also override the datasource via environment variables:
 
 ```bash
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/snakesladders \
@@ -84,24 +79,25 @@ java -jar target/snakes-ladders-3d.jar --spring.profiles.active=postgres
 
 ```
 snakes-ladders-3d/
-├── backend/                      # Spring Boot app (also serves /frontend as static)
+├── backend/                      # Spring Boot app (serves API + static UI)
 │   ├── pom.xml
 │   └── src/main/java/com/arena/snakesladders/
-│       ├── config/               # WebSocketConfig, WebConfig (CORS), DataInitializer
-│       ├── model/                # Player, GameHistory, GameRoom + enums
+│       ├── config/               # WebConfig (CORS), DataInitializer
+│       ├── model/                # Player
 │       ├── repository/           # JPA repositories
-│       ├── service/              # Player, Leaderboard, Board, Bot, Game (engine)
-│       ├── controller/           # Player, Leaderboard, Game (REST) + WebSocket (STOMP)
-│       ├── dto/                  # request/response + WS messages
+│       ├── service/              # Player, Leaderboard
+│       ├── controller/           # Player, Leaderboard (REST)
+│       ├── dto/                  # request/response
 │       └── exception/            # global handler
 │   └── src/main/resources/application.yml   # H2 default + postgres profile
 └── frontend/
     ├── index.html
     ├── css/styles.css            # 3D scene, board, HUD, responsive
-    ├── js/api.js                  # REST + SockJS/STOMP client
+    ├── js/api.js                  # REST client
     ├── js/board3d.js              # 3D board / ladders / snakes / tokens / camera
     ├── js/dice.js                 # 3D dice cube
-    └── js/game.js                 # controller (setup, play, AI, power-ups, audio)
+    ├── js/engine.js               # client-side game engine
+    └── js/game.js                 # controller (setup, play, power-ups, audio)
 ```
 
 ---
@@ -122,29 +118,11 @@ snakes-ladders-3d/
 ### Leaderboard (`/api/leaderboard?by=winrate|wins|fastest&limit=10`)
 Returns ranked entries with `winRate`, `totalWins`, `fastestWinTurns`.
 
-### Games (`/api/games`)
-| Method | Path | Notes |
-|--------|------|-------|
-| GET | `/api/games` | active sessions |
-| POST | `/api/games` | create `{mode, variant, difficulty, players:[{name, ai, difficulty, color}]}` |
-| GET | `/api/games/{code}` | state |
-| POST | `/api/games/{code}/join?name=&ai=` | join an ONLINE room |
-| POST | `/api/games/{code}/start` | start an ONLINE room |
-| POST | `/api/games/{code}/roll?player=` | roll for the current player |
-| POST | `/api/games/{code}/powerup?player=` | `{type: SHIELD|DOUBLE|FREEZE, target?}` |
-| POST | `/api/games/{code}/leave?player=` | leave / disconnect |
-
-### Real-time (WebSocket)
-* Connect: `ws://host/ws` (SockJS)
-* Subscribe: `/topic/room/{code}`
-* Send: `/app/room` → `{type: JOIN|START|ROLL|USE_POWERUP|CHAT|LEAVE, roomCode, player, payload}`
-* Out: `{type: STATE|EVENT|ERROR|INFO, state}`
-
 ---
 
 ## 🎮 How to play
-1. Pick a **mode** (Vs AI / Local / Online), a **variant**, and **difficulty**.
-2. **Vs AI:** you vs. one bot. **Local:** 2–4 names share the screen. **Online:** create a room, share the 6-digit code; friends join from another device.
+1. Pick a **variant** (Classic / Power-Up / Chaos / Speed) and **players** (2–4).
+2. Click **Start Game**.
 3. Click **🎲 Roll Dice** on your turn. Land on 🪜 ladders / 🐍 snakes, grab ⚡ power-ups, and race to the final tile. Exact roll required — overshoot and you bounce back!
 4. In `CHAOS`, the board rebuilds every 3 turns. In `SPEED`, it's a 50-tile sprint.
 
@@ -153,5 +131,5 @@ Returns ranked entries with `winRate`, `totalWins`, `fastestWinTurns`.
 ## 🛠 Troubleshooting
 
 - **Port already in use:** change `server.port` in `application.yml` or stop the process using `:8080`.
-- **CORS / WebSocket errors:** make sure you open the app via `http://...` and not `file://...`.
+- **CORS errors:** make sure you open the app via `http://...` and not `file://...`.
 - **Database errors:** the default profile uses in-memory H2. For PostgreSQL, set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` environment variables, or use `--spring.profiles.active=postgres`.
