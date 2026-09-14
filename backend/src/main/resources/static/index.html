@@ -116,8 +116,26 @@
     <!-- ======================= TOAST ======================= -->
     <div id="toast" class="hidden"></div>
 
+    <!-- ======================= RIDDLE MODAL ======================= -->
+    <div id="riddle-overlay" class="overlay hidden">
+        <div class="setup-card glass riddle-card">
+            <h2>🐍 Snake Riddle</h2>
+            <p class="riddle-hint">Answer correctly to dodge the snake!</p>
+            <div id="riddle-question" class="riddle-question"></div>
+            <div id="riddle-choices" class="riddle-choices"></div>
+            <input type="text" id="riddle-input" class="riddle-input hidden" placeholder="Type your answer..." />
+            <div class="riddle-timer-row">
+                <span id="riddle-timer" class="riddle-timer">15</span>
+                <span class="riddle-timer-label">seconds</span>
+            </div>
+            <div id="riddle-feedback" class="riddle-feedback hidden"></div>
+            <button id="riddle-submit" class="primary riddle-submit">Submit</button>
+        </div>
+    </div>
+
     <!-- ======================= LIBS + APP ======================= -->
     <script src="/js/api.js"></script>
+    <script src="/js/riddles.js"></script>
     <script src="/js/board3d.js"></script>
     <script src="/js/dice.js"></script>
     <script src="/js/engine.js"></script>

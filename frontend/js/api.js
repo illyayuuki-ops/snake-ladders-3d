@@ -38,6 +38,7 @@
             });
         }
         leaderboard(by, limit) { return this.get("/leaderboard?by=" + (by || "winrate") + "&limit=" + (limit || 10)); }
+        riddle() { return this.get("/riddle"); }
     }
 
     global.Api = Api;

@@ -331,6 +331,53 @@ input[type="range"] { width: 100%; }
     animation: fadeIn .25s;
 }
 
+/* ======================= RIDDLE MODAL ======================= */
+.riddle-card {
+    text-align: center;
+    min-width: 320px;
+}
+.riddle-hint {
+    color: var(--warn); font-size: 13px; margin: -8px 0 16px; font-weight: 700;
+}
+.riddle-question {
+    font-size: 18px; font-weight: 700; margin-bottom: 16px; line-height: 1.4;
+}
+.riddle-choices {
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
+}
+.riddle-choice-btn {
+    padding: 12px 16px; border-radius: 10px; border: 2px solid var(--glass-brd);
+    background: rgba(255,255,255,0.06); color: var(--text); font-size: 14px; font-weight: 600;
+    text-align: left; transition: all 0.15s;
+}
+.riddle-choice-btn:hover {
+    background: rgba(110,168,254,0.2); border-color: var(--accent);
+}
+.riddle-choice-btn.selected {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #08122b; border-color: transparent;
+}
+.riddle-input {
+    width: 100%; border-radius: 10px; padding: 12px; font-size: 14px;
+    border: 2px solid var(--glass-brd); background: rgba(255,255,255,0.06); color: var(--text);
+    margin-bottom: 12px; text-align: center;
+}
+.riddle-input:focus { outline: none; border-color: var(--accent); }
+.riddle-timer-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px;
+}
+.riddle-timer {
+    font-size: 32px; font-weight: 800; color: var(--warn); font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px rgba(251,191,36,0.5);
+}
+.riddle-timer-label { font-size: 13px; color: var(--muted); }
+.riddle-feedback {
+    margin-bottom: 12px; font-size: 14px; font-weight: 600; padding: 8px; border-radius: 8px;
+}
+.riddle-feedback.success { color: var(--ok); background: rgba(52,211,153,0.15); border: 1px solid var(--ok); }
+.riddle-feedback.error { color: var(--bad); background: rgba(248,113,113,0.15); border: 1px solid var(--bad); }
+.riddle-submit { margin-top: 8px; }
+
 #board-hint {
     position: fixed; bottom: 8px; left: 12px; font-size: 11px; color: var(--muted); z-index: 12; pointer-events: none;
 }

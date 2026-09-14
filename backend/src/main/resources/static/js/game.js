@@ -22,7 +22,9 @@
         built: false, builtCode: null, builtSize: 0,
         soundOn: true, audio: null,
         config: { variant: "CLASSIC", localCount: 2, localNames: [] },
-        engine: null, stateQueue: null
+        engine: null, stateQueue: null,
+        // riddle state
+        riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null }
     };
     let stateQueue = null;
 
@@ -48,6 +50,122 @@
         else if (kind === "win") { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.22, "triangle", 0.08), i * 130)); }
     }
 
+    /* ---------------- riddle handling ---------------- */
+    function fetchRiddle() {
+        if (G.mode === "LOCAL") return Promise.resolve(Riddles.pickRandom());
+        return G.api.riddle().catch(() => Riddles.pickRandom());
+    }
+
+    function showRiddleModal(riddle) {
+        const overlay = $("riddle-overlay");
+        const questionEl = $("riddle-question");
+        const choicesEl = $("riddle-choices");
+        const inputEl = $("riddle-input");
+        const timerEl = $("riddle-timer");
+        const feedbackEl = $("riddle-feedback");
+        const submitBtn = $("riddle-submit");
+
+        questionEl.textContent = riddle.question;
+        choicesEl.innerHTML = "";
+        inputEl.classList.add("hidden");
+        feedbackEl.classList.add("hidden");
+        feedbackEl.textContent = "";
+        feedbackEl.className = "riddle-feedback hidden";
+
+        if (riddle.choices && riddle.choices.length > 0) {
+            riddle.choices.forEach(choice => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "riddle-choice-btn";
+                btn.textContent = choice;
+                btn.onclick = () => {
+                    document.querySelectorAll(".riddle-choice-btn").forEach(b => b.classList.remove("selected"));
+                    btn.classList.add("selected");
+                    inputEl.value = choice;
+                };
+                choicesEl.appendChild(btn);
+            });
+        } else {
+            inputEl.classList.remove("hidden");
+            inputEl.value = "";
+        }
+
+        G.riddle.timeLeft = 15;
+        timerEl.textContent = G.riddle.timeLeft;
+
+        overlay.classList.remove("hidden");
+
+        if (G.riddle.timer) clearInterval(G.riddle.timer);
+        G.riddle.timer = setInterval(() => {
+            G.riddle.timeLeft--;
+            timerEl.textContent = G.riddle.timeLeft;
+            if (G.riddle.timeLeft <= 0) {
+                clearInterval(G.riddle.timer);
+                G.riddle.timer = null;
+                handleRiddleAnswer(false, "Time's up!");
+            }
+        }, 1000);
+
+        submitBtn.onclick = () => {
+            const answer = inputEl.value.trim();
+            if (!answer) {
+                feedbackEl.textContent = "Please enter an answer";
+                feedbackEl.className = "riddle-feedback hidden";
+                feedbackEl.classList.remove("hidden");
+                return;
+            }
+            handleRiddleAnswer(answer.toLowerCase() === riddle.answer.toLowerCase(), answer);
+        };
+    }
+
+    function hideRiddleModal() {
+        const overlay = $("riddle-overlay");
+        overlay.classList.add("hidden");
+        if (G.riddle.timer) {
+            clearInterval(G.riddle.timer);
+            G.riddle.timer = null;
+        }
+    }
+
+    function handleRiddleAnswer(correct, userAnswer) {
+        const feedbackEl = $("riddle-feedback");
+        if (correct) {
+            feedbackEl.textContent = "✓ Correct! You dodged the snake!";
+            feedbackEl.className = "riddle-feedback success";
+        } else {
+            feedbackEl.textContent = "✗ Wrong! The answer was: " + G.riddle.currentRiddle.answer + ". Sliding down...";
+            feedbackEl.className = "riddle-feedback error";
+        }
+        feedbackEl.classList.remove("hidden");
+
+        if (G.riddle.timer) {
+            clearInterval(G.riddle.timer);
+            G.riddle.timer = null;
+        }
+
+        const slideEvent = G.riddle.slideEvent;
+        const playerName = slideEvent.player;
+        const from = slideEvent.from;
+        const snakeHead = slideEvent.to;
+        const snakeTail = G.lastState.snakes[snakeHead];
+
+        setTimeout(() => {
+            hideRiddleModal();
+            if (correct) {
+                G.lastState.players.forEach(p => {
+                    if (p.name === playerName) p.position = snakeHead;
+                });
+                G.lastState.log.push(playerName + " solved a riddle and dodged the snake!");
+                G.board.placeToken(playerName, snakeHead, false);
+                sound("ladder");
+            } else {
+                G.board.moveAlong(playerName, slideEvent.path, snakeTail, "SLIDE", () => afterMove(G.lastState));
+                return;
+            }
+            afterMove(G.lastState);
+        }, 1200);
+    }
+
     /* ---------------- toast / status ---------------- */
     let toastTimer = null;
     function toast(msg) {
@@ -67,7 +185,7 @@
     }
 
     /* ---------------- apply a state (animate if it carries a move) ---------------- */
-    function applyState(st, animate) {
+    async function applyState(st, animate) {
         G.lastState = st;
         ensureBuild(st);
         if (animate && st.lastEvent) {
@@ -75,10 +193,22 @@
                 stateQueue = { st, animate };
                 return;
             }
+            if (st.lastEvent.kind === "SLIDE") {
+                G.busy = true;
+                setRollLabel("Rolling…", false);
+                sound("snake");
+                G.dice.roll(st.dice, async () => {
+                    const slideEvent = st.lastEvent;
+                    const riddle = await fetchRiddle();
+                    G.riddle.currentRiddle = riddle;
+                    G.riddle.slideEvent = slideEvent;
+                    showRiddleModal(riddle);
+                });
+                return;
+            }
             G.busy = true;
             setRollLabel("Rolling…", false);
             if (st.lastEvent.kind === "CLIMB") sound("ladder");
-            else if (st.lastEvent.kind === "SLIDE") sound("snake");
             else if (st.lastEvent.powerUp) sound("power");
             else sound("roll");
             G.dice.roll(st.dice, () => {
