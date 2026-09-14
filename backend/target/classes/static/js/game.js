@@ -535,44 +535,70 @@
             }
         }
 
-        function renderSearchResults(results) {
+        function renderSearchResults(results, query) {
             searchResults.innerHTML = "";
-            if (!results || results.length === 0) {
+            const trimmedQuery = query.trim();
+            if (!trimmedQuery) {
                 searchResults.classList.add("hidden");
                 return;
             }
-            results.forEach(p => {
-                const item = document.createElement("div");
-                item.className = "search-result-item";
-                item.textContent = p.username;
-                item.onclick = () => {
-                    // Check if already selected
-                    const alreadySelected = chips.querySelector(`.player-chip[data-name="${p.username}"].selected`);
-                    if (alreadySelected) {
-                        toast("Already selected");
-                        return;
-                    }
-                    // Select the chip if it exists
-                    const existingChip = chips.querySelector(`.player-chip[data-name="${p.username}"]`);
-                    if (existingChip) {
-                        existingChip.classList.add("selected");
-                    } else {
-                        // Create a new chip for this search result
-                        const chip = document.createElement("div");
-                        chip.className = "player-chip selected";
-                        chip.dataset.name = p.username;
-                        const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
-                        chip.appendChild(dot);
-                        chip.appendChild(document.createTextNode(p.username));
-                        chip.onclick = () => chip.classList.toggle("selected");
-                        chips.appendChild(chip);
-                    }
-                    nameInput.value = "";
-                    searchResults.classList.add("hidden");
-                };
-                searchResults.appendChild(item);
-            });
+
+            // Check if there's an exact match in results
+            const exactMatch = results && results.some(p => p.username.toLowerCase() === trimmedQuery.toLowerCase());
+            const hasResults = results && results.length > 0;
+
+            // If no exact match, add "Use as new name" option at the top
+            if (!exactMatch && trimmedQuery) {
+                const newNameItem = document.createElement("div");
+                newNameItem.className = "search-result-item search-result-new";
+                newNameItem.innerHTML = `<span class="new-name-icon">+</span> Use "${trimmedQuery}" as a new name`;
+                newNameItem.onclick = () => selectName(trimmedQuery);
+                searchResults.appendChild(newNameItem);
+            }
+
+            // Add matching results
+            if (hasResults) {
+                results.forEach(p => {
+                    // Skip exact match since we already have the "Use as new name" option
+                    if (p.username.toLowerCase() === trimmedQuery.toLowerCase()) return;
+                    const item = document.createElement("div");
+                    item.className = "search-result-item";
+                    item.textContent = p.username;
+                    item.onclick = () => selectName(p.username);
+                    searchResults.appendChild(item);
+                });
+            }
+
             searchResults.classList.remove("hidden");
+        }
+
+        function selectName(name) {
+            const trimmedName = name.trim();
+            if (!trimmedName) return;
+
+            // Check if already selected
+            const alreadySelected = chips.querySelector(`.player-chip[data-name="${trimmedName}"].selected`);
+            if (alreadySelected) {
+                toast("Already selected");
+                return;
+            }
+            // Select the chip if it exists
+            const existingChip = chips.querySelector(`.player-chip[data-name="${trimmedName}"]`);
+            if (existingChip) {
+                existingChip.classList.add("selected");
+            } else {
+                // Create a new chip for this name
+                const chip = document.createElement("div");
+                chip.className = "player-chip selected";
+                chip.dataset.name = trimmedName;
+                const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
+                chip.appendChild(dot);
+                chip.appendChild(document.createTextNode(trimmedName));
+                chip.onclick = () => chip.classList.toggle("selected");
+                chips.appendChild(chip);
+            }
+            nameInput.value = "";
+            searchResults.classList.add("hidden");
         }
 
         if (nameInput) {
@@ -586,11 +612,22 @@
                 searchDebounce = setTimeout(async () => {
                     try {
                         const results = await G.api.searchPlayers(query, 20);
-                        renderSearchResults(results);
+                        renderSearchResults(results, query);
                     } catch (e) {
                         searchResults.classList.add("hidden");
                     }
                 }, 200);
+            });
+
+            // Enter key to commit typed name as new
+            nameInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    const query = nameInput.value.trim();
+                    if (query) {
+                        selectName(query);
+                    }
+                }
             });
 
             // Hide dropdown when clicking outside
