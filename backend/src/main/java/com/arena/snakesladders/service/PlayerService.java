@@ -70,4 +70,10 @@ public class PlayerService {
         return playerRepository.findByUsernameIgnoreCase(username)
                 .orElseGet(() -> playerRepository.save(new Player(username.trim())));
     }
+
+    /** Record a finished match result for a player. */
+    public void recordMatch(String username, String mode, String variant, boolean won, int turns, int placement) {
+        Player p = createOrGet(username);
+        playerRepository.incrementStats(p.getId(), won, turns);
+    }
 }

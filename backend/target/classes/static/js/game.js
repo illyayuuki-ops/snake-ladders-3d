@@ -7,6 +7,13 @@
     const $ = (id) => document.getElementById(id);
     const PALETTE = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899"];
 
+    const VARIANT_DESCS = {
+        CLASSIC: "Classic board with standard snakes and ladders.",
+        POWERUP: "Classic board plus collectible power-ups: Shield, Double Roll, Freeze.",
+        CHAOS: "The board reshuffles every 3 turns. Adapt or lose!",
+        SPEED: "50-tile sprint with dense ladders for faster matches."
+    };
+
     const G = {
         api: new Api(),
         board: null, dice: null,
@@ -223,16 +230,6 @@
     /* ---------------- leaderboard ---------------- */
     function loadLeaderboard(by) {
         renderLocalLeaderboard(by);
-        G.api.leaderboard(by, 10).then(list => {
-            const ol = $("leaderboard-list"); ol.innerHTML = "";
-            list.forEach(e => {
-                const li = document.createElement("li");
-                const meta = by === "fastest" ? (e.fastestWinTurns != null ? e.fastestWinTurns + " turns" : "—")
-                    : by === "wins" ? (e.totalWins + " wins") : Math.round(e.winRate * 100) + "% · " + e.totalWins + "W";
-                li.innerHTML = "<b>" + e.username + "</b> <span class='lb-meta'>" + meta + "</span>";
-                ol.appendChild(li);
-            });
-        }).catch(() => renderLocalLeaderboard(by));
     }
 
     function loadLocalLeaderboard() {
@@ -249,6 +246,7 @@
                 e.fastestWinTurns = p.personalTurns || 0;
         });
         try { localStorage.setItem("sl3d_lb", JSON.stringify(lb)); } catch (e) {}
+        G.api.recordMatch(st.winner, st.mode, st.variant, true, st.turnCount, 1).catch(() => {});
     }
     function renderLocalLeaderboard(by) {
         const lb = loadLocalLeaderboard();
@@ -270,12 +268,12 @@
     async function startGame() {
         ensureAudio();
         const cfg = G.config;
-        const names = cfg.localNames.filter(n => n && n.trim());
-        if (names.length < 2) { toast("Need at least 2 players"); return; }
-        for (const n of names) { try { await G.api.ensurePlayer(n); } catch (e) {} }
+        const selected = Array.from(document.querySelectorAll(".player-chip.selected")).map(el => el.dataset.name);
+        if (selected.length < 2) { toast("Select at least 2 players"); return; }
+        for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
-        G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false;
-        const players = names.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
+        G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false; G.code = "LOCAL";
+        const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
         G.engine = new LocalEngine();
         const st = G.engine.create({ mode: "LOCAL", variant: cfg.variant, difficulty: "EASY", players });
         $("setup-modal").classList.add("hidden");
@@ -284,23 +282,61 @@
     }
 
     /* ---------------- setup modal UI ---------------- */
-    function setupModalWiring() {
+    async function setupModalWiring() {
+        const desc = $("variant-desc");
         const seg = (id, key) => {
             $(id).querySelectorAll("button").forEach(b => {
                 b.onclick = () => {
                     $(id).querySelectorAll("button").forEach(x => x.classList.remove("active"));
                     b.classList.add("active");
                     G.config[key] = b.dataset[key.split("-")[0]] || b.dataset.variant || b.dataset.diff;
+                    if (key === "variant" && desc) desc.textContent = VARIANT_DESCS[G.config.variant] || "";
                 };
             });
         };
         seg("seg-variant", "variant");
+        if (desc) desc.textContent = VARIANT_DESCS[G.config.variant] || "";
 
-        $("input-local-count").oninput = e => {
-            G.config.localCount = +e.target.value;
-            $("local-count-label").textContent = e.target.value;
-            renderLocalNames();
-        };
+        const chips = $("db-players");
+        const addBtn = $("btn-add-player");
+        const nameInput = $("input-new-player");
+
+        async function loadPlayers() {
+            try {
+                const list = await G.api.getPlayers();
+                chips.innerHTML = "";
+                list.forEach(p => {
+                    const chip = document.createElement("div");
+                    chip.className = "player-chip";
+                    chip.dataset.name = p.username;
+                    const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
+                    chip.appendChild(dot);
+                    chip.appendChild(document.createTextNode(p.username));
+                    chip.onclick = () => chip.classList.toggle("selected");
+                    chips.appendChild(chip);
+                });
+            } catch (e) {
+                chips.innerHTML = "<span style='font-size:11px;color:var(--muted)'>Could not load players</span>";
+            }
+        }
+
+        if (addBtn && nameInput) {
+            addBtn.onclick = async () => {
+                const name = (nameInput.value || "").trim();
+                if (!name) return;
+                try {
+                    await G.api.createPlayer(name);
+                    nameInput.value = "";
+                    await loadPlayers();
+                    toast("Player added");
+                } catch (e) {
+                    toast("Error: " + e.message);
+                }
+            };
+        }
+
+        await loadPlayers();
+
         $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();
 
@@ -318,24 +354,6 @@
             if (G.soundOn) ensureAudio();
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
-
-        renderLocalNames();
-    }
-
-    function renderLocalNames() {
-        const wrap = $("local-names"); wrap.innerHTML = "";
-        const n = G.config.localCount;
-        const first = ($("input-name").value || "Player 1").trim() || "Player 1";
-        G.config.localNames = [];
-        for (let i = 0; i < n; i++) {
-            const def = i === 0 ? first : "Player " + (i + 1);
-            G.config.localNames.push(def);
-            const row = document.createElement("div"); row.className = "local-name-row";
-            const dot = document.createElement("span"); dot.style.background = PALETTE[i % PALETTE.length];
-            const inp = document.createElement("input"); inp.type = "text"; inp.maxLength = 14; inp.value = def;
-            inp.oninput = e => { G.config.localNames[i] = e.target.value; };
-            row.appendChild(dot); row.appendChild(inp); wrap.appendChild(row);
-        }
     }
 
     /* ---------------- camera drag / zoom ---------------- */

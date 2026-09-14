@@ -1,7 +1,5 @@
 /* ============================================================
-   engine.js — fully client-side game engine (offline fallback).
-   Mirrors the backend rules so Vs AI / Local play with NO server.
-   Online mode still uses the Spring Boot REST + WebSocket backend.
+   engine.js — fully client-side game engine for local play.
    ============================================================ */
 (function (global) {
     "use strict";

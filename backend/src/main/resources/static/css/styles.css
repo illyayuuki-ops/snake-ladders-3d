@@ -306,6 +306,17 @@ input[type="range"] { width: 100%; }
 .hint { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
 .local-name-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .local-name-row span { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto; }
+.player-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.player-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--glass-brd); background: rgba(255,255,255,0.06);
+    border-radius: 999px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+    user-select: none;
+}
+.player-chip.selected { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #08122b; border-color: transparent; }
+.player-chip .dot { width: 12px; height: 12px; border-radius: 50%; }
+.add-player-row { display: flex; gap: 8px; margin-top: 8px; }
+.add-player-row input { flex: 1; }
 .setup-error { color: var(--bad); font-size: 12px; min-height: 14px; margin-bottom: 6px; }
 
 .win-card { text-align: center; }

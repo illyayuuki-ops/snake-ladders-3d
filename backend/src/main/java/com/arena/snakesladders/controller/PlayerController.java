@@ -2,6 +2,7 @@ package com.arena.snakesladders.controller;
 
 import com.arena.snakesladders.dto.CreatePlayerRequest;
 import com.arena.snakesladders.dto.PlayerResponse;
+import com.arena.snakesladders.dto.RecordMatchRequest;
 import com.arena.snakesladders.dto.UpdatePlayerRequest;
 import com.arena.snakesladders.model.Player;
 import com.arena.snakesladders.service.PlayerService;
@@ -59,6 +60,19 @@ public class PlayerController {
     public PlayerResponse ensure(@Valid @RequestBody CreatePlayerRequest req) {
         Player p = playerService.createOrGet(req.getUsername());
         return PlayerResponse.from(p);
+    }
+
+    /** Record a finished local match result for the leaderboard. */
+    @PostMapping("/record-match")
+    public void recordMatch(@RequestBody RecordMatchRequest req) {
+        playerService.recordMatch(
+                req.getUsername(),
+                req.getMode(),
+                req.getVariant(),
+                req.isWon(),
+                req.getTurns(),
+                req.getPlacement()
+        );
     }
 
     @PutMapping("/{id}")

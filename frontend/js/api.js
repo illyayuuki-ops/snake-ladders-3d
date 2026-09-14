@@ -30,6 +30,13 @@
         post(url, body) { return this._req("POST", url, body); }
 
         ensurePlayer(name) { return this.post("/players/ensure", { username: name }); }
+        getPlayers() { return this.get("/players"); }
+        createPlayer(name) { return this.post("/players", { username: name }); }
+        recordMatch(username, mode, variant, won, turns, placement) {
+            return this.post("/players/record-match", {
+                username, mode, variant, won, turns, placement
+            });
+        }
         leaderboard(by, limit) { return this.get("/leaderboard?by=" + (by || "winrate") + "&limit=" + (limit || 10)); }
     }
 

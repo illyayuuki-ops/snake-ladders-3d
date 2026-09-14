@@ -96,11 +96,16 @@
                     <button data-variant="CHAOS">Chaos</button>
                     <button data-variant="SPEED">Speed</button>
                 </div>
+                <p id="variant-desc" class="hint">Classic board with standard snakes and ladders.</p>
             </div>
             <div class="field">
-                <label>Players <span id="local-count-label">2</span></label>
-                <input id="input-local-count" type="range" min="2" max="4" value="2" />
-                <div id="local-names"></div>
+                <label>Players</label>
+                <div id="db-players" class="player-chips"></div>
+                <div class="add-player-row">
+                    <input id="input-new-player" type="text" maxlength="18" placeholder="New player name" />
+                    <button id="btn-add-player" class="secondary">Add</button>
+                </div>
+                <p class="hint">Select players from the list or add new ones. Minimum 2 required.</p>
             </div>
             <div id="setup-error" class="setup-error"></div>
             <button id="btn-start" class="primary big">Start Game</button>
