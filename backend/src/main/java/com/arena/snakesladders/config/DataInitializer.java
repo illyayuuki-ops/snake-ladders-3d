@@ -19,20 +19,24 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (playerService.findAll().isEmpty()) {
-            String[][] seeds = {
-                    {"Alice", "3", "1", "38"},
-                    {"Bob", "2", "2", "42"},
-                    {"Carol", "1", "3", "0"},
-                    {"Dave", "4", "0", "35"},
-                    {"Eve", "0", "4", "0"}
-            };
-            for (String[] s : seeds) {
-                var p = playerService.createOrGet(s[0]);
-                p.setTotalGames(Integer.parseInt(s[1]));
-                p.setTotalWins(Integer.parseInt(s[2]));
-                if (Integer.parseInt(s[3]) > 0) p.setFastestWinTurns(Integer.parseInt(s[3]));
-            }
+        // 112 names to seed the database
+        String[] names = {
+            "Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Heidi",
+            "Ivan", "Judy", "Karl", "Laura", "Mike", "Nina", "Oscar", "Peggy",
+            "Quinn", "Ruth", "Steve", "Tina", "Uma", "Victor", "Wendy", "Xavier",
+            "Yara", "Zack", "Aaron", "Beth", "Caleb", "Dana", "Ethan", "Fiona",
+            "George", "Hannah", "Isaac", "Julia", "Kevin", "Leah", "Mason", "Maya",
+            "Nathan", "Olivia", "Peter", "Quinn", "Rachel", "Sam", "Tyler", "Ursula",
+            "Vera", "Will", "Xena", "Yvonne", "Zoe", "Adrian", "Bella", "Cody",
+            "Diana", "Elliot", "Felix", "Gina", "Henry", "Iris", "Jack", "Kara",
+            "Leo", "Luna", "Max", "Nora", "Owen", "Piper", "Quentin", "Ruby",
+            "Sage", "Theo", "Uri", "Violet", "Wyatt", "Xander", "Yuna", "Zane",
+            "Aria", "Blake", "Chloe", "Dylan", "Emma", "Finn", "Gwen", "Hugo",
+            "Ivy", "Jade", "Kai", "Liam", "Mia", "Noah", "Olive", "Pax"
+        };
+
+        for (String name : names) {
+            playerService.createOrGet(name);
         }
     }
 }

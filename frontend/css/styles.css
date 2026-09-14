@@ -221,6 +221,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand .logo { font-size: 24px; }
+.brand .logo img { height: 40px; width: auto; display: block; border-radius: 6px; }
 .brand .title { font-weight: 800; letter-spacing: .3px; }
 .brand .sub { font-size: 11px; color: var(--muted); }
 .top-stats { display: flex; gap: 18px; margin-left: auto; }
@@ -315,8 +316,24 @@ input[type="range"] { width: 100%; }
 }
 .player-chip.selected { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #08122b; border-color: transparent; }
 .player-chip .dot { width: 12px; height: 12px; border-radius: 50%; }
-.add-player-row { display: flex; gap: 8px; margin-top: 8px; }
-.add-player-row input { flex: 1; }
+.add-player-row { margin-top: 8px; }
+.search-wrapper { position: relative; width: 100%; }
+.search-wrapper input { width: 100%; }
+.search-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--glass); border: 1px solid var(--glass-brd);
+    border-radius: 10px; backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--shadow); z-index: 100; max-height: 200px; overflow-y: auto;
+}
+.search-results.hidden { display: none; }
+.search-result-item {
+    padding: 10px 12px; font-size: 13px; cursor: pointer;
+    border-bottom: 1px solid var(--glass-brd);
+    transition: background 0.1s;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: rgba(110,168,254,0.15); }
 .setup-error { color: var(--bad); font-size: 12px; min-height: 14px; margin-bottom: 6px; }
 
 .win-card { text-align: center; }
@@ -340,7 +357,8 @@ input[type="range"] { width: 100%; }
     color: var(--warn); font-size: 13px; margin: -8px 0 16px; font-weight: 700;
 }
 .riddle-question {
-    font-size: 18px; font-weight: 700; margin-bottom: 16px; line-height: 1.4;
+    font-size: 18px; font-weight: 700; margin-bottom: 16px; line-height: 1.6;
+    white-space: pre-line;
 }
 .riddle-choices {
     display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;

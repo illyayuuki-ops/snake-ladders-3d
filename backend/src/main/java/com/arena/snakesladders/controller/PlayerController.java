@@ -30,6 +30,14 @@ public class PlayerController {
                 .collect(Collectors.toList());
     }
 
+    @GetMapping("/search")
+    public List<PlayerResponse> search(@RequestParam(required = false, defaultValue = "") String q,
+                                        @RequestParam(required = false, defaultValue = "20") int limit) {
+        return playerService.search(q, limit).stream()
+                .map(PlayerResponse::from)
+                .collect(Collectors.toList());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PlayerResponse> get(@PathVariable Long id) {
         return playerService.findById(id)

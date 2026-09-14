@@ -22,7 +22,11 @@
         built: false, builtCode: null, builtSize: 0,
         soundOn: true, audio: null,
         config: { variant: "CLASSIC", localCount: 2, localNames: [] },
-        engine: null, stateQueue: null
+        engine: null, stateQueue: null,
+        // riddle state
+        riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null },
+        // background music state
+        bgMusic: { node: null, gain: null, playing: false }
     };
     let stateQueue = null;
 
@@ -48,6 +52,203 @@
         else if (kind === "win") { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.22, "triangle", 0.08), i * 130)); }
     }
 
+    /* ---------------- retro background music ---------------- */
+    function createRetroMusic() {
+        if (!G.audio) return null;
+        const ctx = G.audio;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.2;
+        gain.connect(ctx.destination);
+
+        // Simple chiptune-style loop: arpeggio + bass
+        const notes = [
+            // Arpeggio pattern (higher notes)
+            { freq: 261.63, dur: 0.15, type: "square", vol: 0.03 }, // C4
+            { freq: 329.63, dur: 0.15, type: "square", vol: 0.03 }, // E4
+            { freq: 392.00, dur: 0.15, type: "square", vol: 0.03 }, // G4
+            { freq: 523.25, dur: 0.15, type: "square", vol: 0.03 }, // C5
+            { freq: 392.00, dur: 0.15, type: "square", vol: 0.03 }, // G4
+            { freq: 329.63, dur: 0.15, type: "square", vol: 0.03 }, // E4
+            // Bass line
+            { freq: 65.41, dur: 0.3, type: "sawtooth", vol: 0.04 },  // C2
+            { freq: 87.31, dur: 0.3, type: "sawtooth", vol: 0.04 },  // F2
+            { freq: 98.00, dur: 0.3, type: "sawtooth", vol: 0.04 },  // G2
+            { freq: 87.31, dur: 0.3, type: "sawtooth", vol: 0.04 },  // F2
+        ];
+
+        let noteIndex = 0;
+        let nextTime = ctx.currentTime;
+
+        function scheduleNext() {
+            if (!G.bgMusic.playing || !G.soundOn) return;
+            const note = notes[noteIndex % notes.length];
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = note.type;
+            o.frequency.value = note.freq;
+            g.gain.value = note.vol;
+            o.connect(g);
+            g.connect(gain);
+            const startTime = Math.max(nextTime, ctx.currentTime);
+            o.start(startTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, startTime + note.dur);
+            o.stop(startTime + note.dur);
+            nextTime = startTime + note.dur;
+            noteIndex++;
+            // Schedule next note
+            const delay = (nextTime - ctx.currentTime) * 1000;
+            setTimeout(scheduleNext, Math.max(1, delay));
+        }
+
+        G.bgMusic.gain = gain;
+        G.bgMusic.playing = true;
+        scheduleNext();
+        return gain;
+    }
+
+    function startBgMusic() {
+        if (G.bgMusic.playing) return;
+        ensureAudio();
+        if (!G.audio) return;
+        // Resume audio context if suspended (browser autoplay policy)
+        if (G.audio.state === "suspended") {
+            G.audio.resume().then(() => createRetroMusic());
+        } else {
+            createRetroMusic();
+        }
+    }
+
+    function stopBgMusic() {
+        G.bgMusic.playing = false;
+        if (G.bgMusic.gain) {
+            G.bgMusic.gain.disconnect();
+            G.bgMusic.gain = null;
+        }
+    }
+
+    function toggleBgMusic(on) {
+        if (on) startBgMusic(); else stopBgMusic();
+    }
+
+    /* ---------------- riddle handling ---------------- */
+    function fetchRiddle() {
+        if (G.mode === "LOCAL") return Promise.resolve(Riddles.pickRandom());
+        return G.api.riddle().catch(() => Riddles.pickRandom());
+    }
+
+    function showRiddleModal(riddle) {
+        const overlay = $("riddle-overlay");
+        const questionEl = $("riddle-question");
+        const choicesEl = $("riddle-choices");
+        const inputEl = $("riddle-input");
+        const timerEl = $("riddle-timer");
+        const feedbackEl = $("riddle-feedback");
+        const submitBtn = $("riddle-submit");
+
+        questionEl.textContent = riddle.question;
+        choicesEl.innerHTML = "";
+        inputEl.classList.add("hidden");
+        feedbackEl.classList.add("hidden");
+        feedbackEl.textContent = "";
+        feedbackEl.className = "riddle-feedback hidden";
+
+        if (riddle.choices && riddle.choices.length > 0) {
+            riddle.choices.forEach(choice => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "riddle-choice-btn";
+                btn.textContent = choice;
+                btn.onclick = () => {
+                    document.querySelectorAll(".riddle-choice-btn").forEach(b => b.classList.remove("selected"));
+                    btn.classList.add("selected");
+                    inputEl.value = choice;
+                };
+                choicesEl.appendChild(btn);
+            });
+        } else {
+            inputEl.classList.remove("hidden");
+            inputEl.value = "";
+        }
+
+        // Position-based timer: 20s normally, 12s past tile 55
+        const slideEvent = G.riddle.slideEvent;
+        const snakeHeadTile = slideEvent ? slideEvent.path[slideEvent.path.length - 1] : 0;
+        const seconds = snakeHeadTile > 55 ? 12 : 20;
+        G.riddle.timeLeft = seconds;
+        timerEl.textContent = G.riddle.timeLeft;
+
+        overlay.classList.remove("hidden");
+
+        if (G.riddle.timer) clearInterval(G.riddle.timer);
+        G.riddle.timer = setInterval(() => {
+            G.riddle.timeLeft--;
+            timerEl.textContent = G.riddle.timeLeft;
+            if (G.riddle.timeLeft <= 0) {
+                clearInterval(G.riddle.timer);
+                G.riddle.timer = null;
+                handleRiddleAnswer(false, "Time's up!");
+            }
+        }, 1000);
+
+        submitBtn.onclick = () => {
+            const answer = inputEl.value.trim();
+            if (!answer) {
+                feedbackEl.textContent = "Please enter an answer";
+                feedbackEl.className = "riddle-feedback hidden";
+                feedbackEl.classList.remove("hidden");
+                return;
+            }
+            handleRiddleAnswer(answer.toLowerCase() === riddle.answer.toLowerCase(), answer);
+        };
+    }
+
+    function hideRiddleModal() {
+        const overlay = $("riddle-overlay");
+        overlay.classList.add("hidden");
+        if (G.riddle.timer) {
+            clearInterval(G.riddle.timer);
+            G.riddle.timer = null;
+        }
+    }
+
+    function handleRiddleAnswer(correct, userAnswer) {
+        const feedbackEl = $("riddle-feedback");
+        if (correct) {
+            feedbackEl.textContent = "✓ Correct! You dodged the snake!";
+            feedbackEl.className = "riddle-feedback success";
+        } else {
+            feedbackEl.textContent = "✗ Wrong! The answer was: " + G.riddle.currentRiddle.answer + ". Sliding down...";
+            feedbackEl.className = "riddle-feedback error";
+        }
+        feedbackEl.classList.remove("hidden");
+
+        if (G.riddle.timer) {
+            clearInterval(G.riddle.timer);
+            G.riddle.timer = null;
+        }
+
+        const slideEvent = G.riddle.slideEvent;
+        const playerName = slideEvent.player;
+        const from = slideEvent.from;
+        const snakeHead = slideEvent.path[slideEvent.path.length - 1];
+        const snakeTail = slideEvent.to;
+
+        setTimeout(() => {
+            hideRiddleModal();
+            if (correct) {
+                G.lastState.players.forEach(p => {
+                    if (p.name === playerName) p.position = snakeHead;
+                });
+                G.lastState.log.push(playerName + " solved a riddle and dodged the snake!");
+                G.board.moveAlong(playerName, slideEvent.path, snakeHead, "CLIMB", () => afterMove(G.lastState));
+                return;
+            } else {
+                G.board.moveAlong(playerName, slideEvent.path, snakeTail, "SLIDE", () => afterMove(G.lastState));
+                return;
+            }
+        }, 1200);
+    }
+
     /* ---------------- toast / status ---------------- */
     let toastTimer = null;
     function toast(msg) {
@@ -67,7 +268,7 @@
     }
 
     /* ---------------- apply a state (animate if it carries a move) ---------------- */
-    function applyState(st, animate) {
+    async function applyState(st, animate) {
         G.lastState = st;
         ensureBuild(st);
         if (animate && st.lastEvent) {
@@ -75,10 +276,22 @@
                 stateQueue = { st, animate };
                 return;
             }
+            if (st.lastEvent.kind === "SLIDE") {
+                G.busy = true;
+                setRollLabel("Rolling…", false);
+                sound("snake");
+                G.dice.roll(st.dice, async () => {
+                    const slideEvent = st.lastEvent;
+                    const riddle = await fetchRiddle();
+                    G.riddle.currentRiddle = riddle;
+                    G.riddle.slideEvent = slideEvent;
+                    showRiddleModal(riddle);
+                });
+                return;
+            }
             G.busy = true;
             setRollLabel("Rolling…", false);
             if (st.lastEvent.kind === "CLIMB") sound("ladder");
-            else if (st.lastEvent.kind === "SLIDE") sound("snake");
             else if (st.lastEvent.powerUp) sound("power");
             else sound("roll");
             G.dice.roll(st.dice, () => {
@@ -279,6 +492,7 @@
         $("setup-modal").classList.add("hidden");
         applyState(st, false);
         scheduleNext(st);
+        if (G.soundOn) startBgMusic();
     }
 
     /* ---------------- setup modal UI ---------------- */
@@ -298,8 +512,9 @@
         if (desc) desc.textContent = VARIANT_DESCS[G.config.variant] || "";
 
         const chips = $("db-players");
-        const addBtn = $("btn-add-player");
         const nameInput = $("input-new-player");
+        const searchResults = $("search-results");
+        let searchDebounce = null;
 
         async function loadPlayers() {
             try {
@@ -320,19 +535,70 @@
             }
         }
 
-        if (addBtn && nameInput) {
-            addBtn.onclick = async () => {
-                const name = (nameInput.value || "").trim();
-                if (!name) return;
-                try {
-                    await G.api.createPlayer(name);
+        function renderSearchResults(results) {
+            searchResults.innerHTML = "";
+            if (!results || results.length === 0) {
+                searchResults.classList.add("hidden");
+                return;
+            }
+            results.forEach(p => {
+                const item = document.createElement("div");
+                item.className = "search-result-item";
+                item.textContent = p.username;
+                item.onclick = () => {
+                    // Check if already selected
+                    const alreadySelected = chips.querySelector(`.player-chip[data-name="${p.username}"].selected`);
+                    if (alreadySelected) {
+                        toast("Already selected");
+                        return;
+                    }
+                    // Select the chip if it exists
+                    const existingChip = chips.querySelector(`.player-chip[data-name="${p.username}"]`);
+                    if (existingChip) {
+                        existingChip.classList.add("selected");
+                    } else {
+                        // Create a new chip for this search result
+                        const chip = document.createElement("div");
+                        chip.className = "player-chip selected";
+                        chip.dataset.name = p.username;
+                        const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
+                        chip.appendChild(dot);
+                        chip.appendChild(document.createTextNode(p.username));
+                        chip.onclick = () => chip.classList.toggle("selected");
+                        chips.appendChild(chip);
+                    }
                     nameInput.value = "";
-                    await loadPlayers();
-                    toast("Player added");
-                } catch (e) {
-                    toast("Error: " + e.message);
+                    searchResults.classList.add("hidden");
+                };
+                searchResults.appendChild(item);
+            });
+            searchResults.classList.remove("hidden");
+        }
+
+        if (nameInput) {
+            nameInput.addEventListener("input", () => {
+                clearTimeout(searchDebounce);
+                const query = nameInput.value.trim();
+                if (!query) {
+                    searchResults.classList.add("hidden");
+                    return;
                 }
-            };
+                searchDebounce = setTimeout(async () => {
+                    try {
+                        const results = await G.api.searchPlayers(query, 20);
+                        renderSearchResults(results);
+                    } catch (e) {
+                        searchResults.classList.add("hidden");
+                    }
+                }, 200);
+            });
+
+            // Hide dropdown when clicking outside
+            document.addEventListener("click", (e) => {
+                if (!nameInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add("hidden");
+                }
+            });
         }
 
         await loadPlayers();
@@ -352,6 +618,7 @@
             G.soundOn = !G.soundOn;
             $("btn-sound").textContent = G.soundOn ? "🔊" : "🔇";
             if (G.soundOn) ensureAudio();
+            toggleBgMusic(G.soundOn);
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
     }

@@ -39,6 +39,7 @@
         }
         leaderboard(by, limit) { return this.get("/leaderboard?by=" + (by || "winrate") + "&limit=" + (limit || 10)); }
         riddle() { return this.get("/riddle"); }
+        searchPlayers(q, limit) { return this.get("/players/search?q=" + enc(q || "") + "&limit=" + (limit || 20)); }
     }
 
     global.Api = Api;

@@ -23,38 +23,38 @@ public class RiddleService {
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
     private final List<Riddle> localPool = Arrays.asList(
-            new Riddle("What has keys but can't open locks?", "A piano", Arrays.asList("A piano", "A map", "A computer", "A door")),
-            new Riddle("What has a head and a tail but no body?", "A coin", Arrays.asList("A coin", "A snake", "A comet", "A worm")),
-            new Riddle("What gets wetter the more it dries?", "A towel", Arrays.asList("A towel", "A sponge", "A cloth", "A mop")),
-            new Riddle("What can you catch but not throw?", "A cold", Arrays.asList("A cold", "A ball", "A fish", "A frisbee")),
-            new Riddle("What has many teeth but can't bite?", "A comb", Arrays.asList("A comb", "A saw", "A zipper", "A gear")),
-            new Riddle("What has legs but cannot walk?", "A table", Arrays.asList("A table", "A chair", "A stool", "A bed")),
-            new Riddle("What has an eye but cannot see?", "A needle", Arrays.asList("A needle", "A storm", "A potato", "A camera")),
-            new Riddle("What goes up but never comes down?", "Your age", Arrays.asList("Your age", "A balloon", "Smoke", "A rocket")),
-            new Riddle("What has words but never speaks?", "A book", Arrays.asList("A book", "A dictionary", "A letter", "A sign")),
-            new Riddle("What has a neck but no head?", "A bottle", Arrays.asList("A bottle", "A shirt", "A guitar", "A vase")),
-            new Riddle("What can travel around the world while staying in a corner?", "A stamp", Arrays.asList("A stamp", "A coin", "A postcard", "A letter")),
-            new Riddle("What has a thumb and four fingers but is not alive?", "A glove", Arrays.asList("A glove", "A hand", "A mitten", "A puppet")),
-            new Riddle("What is full of holes but still holds water?", "A sponge", Arrays.asList("A sponge", "A net", "A colander", "A bucket")),
-            new Riddle("What can you break without touching it?", "A promise", Arrays.asList("A promise", "A heart", "A record", "A rule")),
-            new Riddle("What goes up and down but doesn't move?", "A staircase", Arrays.asList("A staircase", "An elevator", "A ladder", "A hill")),
-            new Riddle("What has a ring but no finger?", "A phone", Arrays.asList("A phone", "A bell", "A planet", "A circle")),
-            new Riddle("What has branches but no leaves?", "A bank", Arrays.asList("A bank", "A tree", "A river", "A family")),
-            new Riddle("What can fill a room but takes up no space?", "Light", Arrays.asList("Light", "Air", "Sound", "Shadow")),
-            new Riddle("What is always in front of you but can't be seen?", "The future", Arrays.asList("The future", "Your nose", "A mirror", "Time")),
-            new Riddle("What gets bigger the more you take away?", "A hole", Arrays.asList("A hole", "A pile", "A debt", "A gap")),
-            new Riddle("What has cities but no houses, mountains but no trees, water but no fish?", "A map", Arrays.asList("A map", "A globe", "A drawing", "A model")),
-            new Riddle("What has a bed but never sleeps?", "A river", Arrays.asList("A river", "A truck", "A garden", "A bedroom")),
-            new Riddle("What runs but never walks?", "Water", Arrays.asList("Water", "A clock", "A nose", "A motor")),
-            new Riddle("What has a face but no eyes?", "A clock", Arrays.asList("A clock", "A coin", "A die", "A card")),
-            new Riddle("What can be cracked, made, told, and played?", "A joke", Arrays.asList("A joke", "A code", "A game", "A nut")),
-            new Riddle("What has a heart that doesn't beat?", "An artichoke", Arrays.asList("An artichoke", "A stone", "A tree", "A machine")),
-            new Riddle("What is so fragile that saying its name breaks it?", "Silence", Arrays.asList("Silence", "Glass", "A promise", "Trust")),
-            new Riddle("What has many keys but can't open a single lock?", "A piano", Arrays.asList("A piano", "A keyboard", "A map", "A typewriter")),
-            new Riddle("What can you hold in your left hand but not your right?", "Your right elbow", Arrays.asList("Your right elbow", "A feather", "A pencil", "A coin")),
-            new Riddle("What has a bottom at the top?", "Your legs", Arrays.asList("Your legs", "A bottle", "A mountain", "A cup")),
-            new Riddle("What goes through towns and hills but never moves?", "A road", Arrays.asList("A road", "A river", "A train", "A path")),
-            new Riddle("What has four legs in the morning, two at noon, and three in the evening?", "A human", Arrays.asList("A human", "A dog", "A cat", "A bird"))
+            new Riddle("Black keys, white keys sing\nNo lock opens to their tune\nMusic flows within", "A piano", Arrays.asList("A piano", "A map", "A computer", "A door")),
+            new Riddle("Round head, tail behind\nNo body in the middle\nSpends but has no life", "A coin", Arrays.asList("A coin", "A snake", "A comet", "A worm")),
+            new Riddle("Wet more as it dries\nHangs upon the bathroom rack\nSoft thirst drinks the bath", "A towel", Arrays.asList("A towel", "A sponge", "A cloth", "A mop")),
+            new Riddle("Catch it, cannot throw\nWinter brings it uninvited\nRest cures the sneeze fast", "A cold", Arrays.asList("A cold", "A ball", "A fish", "A frisbee")),
+            new Riddle("Many teeth in row\nCannot bite a single thing\nStraightens tangled hair", "A comb", Arrays.asList("A comb", "A saw", "A zipper", "A gear")),
+            new Riddle("Four legs standing tall\nCannot walk a single step\nHolds your dinner plate", "A table", Arrays.asList("A table", "A chair", "A stool", "A bed")),
+            new Riddle("One eye sees no light\nThread passes through the small hole\nMends the torn apart", "A needle", Arrays.asList("A needle", "A storm", "A potato", "A camera")),
+            new Riddle("Numbers climb each year\nNever once goes back again\nBirthdays mark the rise", "Your age", Arrays.asList("Your age", "A balloon", "Smoke", "A rocket")),
+            new Riddle("Pages hold the words\nSilent stories wait inside\nOpen, read, travel", "A book", Arrays.asList("A book", "A dictionary", "A letter", "A sign")),
+            new Riddle("Long neck, no head found\nCork guards the liquid within\nPour and share the drink", "A bottle", Arrays.asList("A bottle", "A shirt", "A guitar", "A vase")),
+            new Riddle("Corner holds the world\nSticky back carries the mail\nTravels far and wide", "A stamp", Arrays.asList("A stamp", "A coin", "A postcard", "A letter")),
+            new Riddle("Thumb and fingers four\nNot alive but fits the hand\nWarms against the cold", "A glove", Arrays.asList("A glove", "A hand", "A mitten", "A puppet")),
+            new Riddle("Full of holes yet holds\nWater soaks in every pore\nSqueeze and it lets go", "A sponge", Arrays.asList("A sponge", "A net", "A colander", "A bucket")),
+            new Riddle("Break without a touch\nWords once spoken bind the heart\nTrust once lost is gone", "A promise", Arrays.asList("A promise", "A heart", "A record", "A rule")),
+            new Riddle("Goes up, goes down, stays\nSteps connect each floor to floor\nFeet move, stairs stand firm", "A staircase", Arrays.asList("A staircase", "An elevator", "A ladder", "A hill")),
+            new Riddle("Has a ring, no hand\nVoice travels through the wire\nHello, who is this?", "A phone", Arrays.asList("A phone", "A bell", "A planet", "A circle")),
+            new Riddle("Branches, no leaves grow\nMoney kept in vaulted rooms\nInterest blooms in time", "A bank", Arrays.asList("A bank", "A tree", "A river", "A family")),
+            new Riddle("Fills the room with light\nTakes no space, no weight at all\nDarkness flees away", "Light", Arrays.asList("Light", "Air", "Sound", "Shadow")),
+            new Riddle("Always just ahead\nNever caught by reaching hand\nTomorrow becomes today", "The future", Arrays.asList("The future", "Your nose", "A mirror", "Time")),
+            new Riddle("Dig and it grows wide\nEmpty space expands below\nMore dirt, bigger hole", "A hole", Arrays.asList("A hole", "A pile", "A debt", "A gap")),
+            new Riddle("Cities, no houses\nMountains, trees, and rivers drawn\nPaper holds the world", "A map", Arrays.asList("A map", "A globe", "A drawing", "A model")),
+            new Riddle("Has a bed, no sleep\nWater flows through stone and sand\nJourney to the sea", "A river", Arrays.asList("A river", "A truck", "A garden", "A bedroom")),
+            new Riddle("Runs but has no legs\nFlows downhill, never walks back\nLife drinks from its path", "Water", Arrays.asList("Water", "A clock", "A nose", "A motor")),
+            new Riddle("Face with hands that move\nNo eyes to see the passing\nTicks the seconds by", "A clock", Arrays.asList("A clock", "A coin", "A die", "A card")),
+            new Riddle("Cracked, made, told, played\nLaughter bursts from word and wit\nJoy in punchline form", "A joke", Arrays.asList("A joke", "A code", "A game", "A nut")),
+            new Riddle("Heart that does not beat\nGreen leaves guard the tender core\nSteam reveals the prize", "An artichoke", Arrays.asList("An artichoke", "A stone", "A tree", "A machine")),
+            new Riddle("Speak and it is gone\nQuiet holds the loudest power\nListen to the hush", "Silence", Arrays.asList("Silence", "Glass", "A promise", "Trust")),
+            new Riddle("Many keys, no locks\nIvory sings beneath the hands\nSongs without a door", "A piano", Arrays.asList("A piano", "A keyboard", "A map", "A typewriter")),
+            new Riddle("Left hand holds it tight\nRight hand cannot reach its bend\nElbow knows the trick", "Your right elbow", Arrays.asList("Your right elbow", "A feather", "A pencil", "A coin")),
+            new Riddle("Bottom at the top\nTwo legs carry you along\nFeet touch ground below", "Your legs", Arrays.asList("Your legs", "A bottle", "A mountain", "A cup")),
+            new Riddle("Through towns, over hills\nNever moves an inch itself\nCars and feet travel", "A road", Arrays.asList("A road", "A river", "A train", "A path")),
+            new Riddle("Morning four legs crawl\nNoon walks on two upright legs\nEvening adds a cane", "A human", Arrays.asList("A human", "A dog", "A cat", "A bird"))
     );
 
     @PostConstruct
@@ -90,10 +90,10 @@ public class RiddleService {
             return null;
         }
 
-        String prompt = "Generate a single short riddle suitable for a board game. " +
+        String prompt = "Generate a single short riddle in strict 5-7-5 haiku format (three lines with 5, 7, 5 syllables). " +
                 "Return ONLY a JSON object with exactly these fields: " +
-                "question (string), answer (string), choices (array of 4 strings including the correct answer). " +
-                "Make the riddle clever but solvable in 15 seconds. No extra text.";
+                "question (string with \\n line breaks for the three haiku lines), answer (string), choices (array of 4 strings including the correct answer). " +
+                "Make the riddle clever but solvable in 15 seconds. No extra text, no markdown formatting.";
 
         Map<String, Object> requestBody = new HashMap<>();
         List<Map<String, Object>> contents = new ArrayList<>();

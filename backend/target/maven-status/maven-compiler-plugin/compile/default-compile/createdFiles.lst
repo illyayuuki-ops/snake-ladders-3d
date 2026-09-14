@@ -1,8 +1,11 @@
 com\arena\snakesladders\config\WebConfig.class
+com\arena\snakesladders\controller\RiddleController.class
 com\arena\snakesladders\model\Player.class
 com\arena\snakesladders\dto\LeaderboardEntry.class
+com\arena\snakesladders\service\RiddleService$Riddle.class
 com\arena\snakesladders\controller\LeaderboardController.class
 com\arena\snakesladders\service\LeaderboardService.class
+com\arena\snakesladders\service\RiddleService.class
 com\arena\snakesladders\config\DataInitializer.class
 com\arena\snakesladders\service\PlayerService.class
 com\arena\snakesladders\exception\GlobalExceptionHandler.class

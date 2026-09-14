@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>3D Snakes &amp; Ladders — Arena Edition</title>
+    <title>3D Snakes & Ladders — Arena Edition</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/images/logo.png" />
+    <link rel="apple-touch-icon" href="/images/logo.png" />
     <!-- Tailwind (progressive enhancement for utility styling in real browsers) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/styles.css" />
@@ -20,9 +23,9 @@
     <!-- ======================= TOP HUD ======================= -->
     <header id="hud-top" class="glass">
         <div class="brand">
-            <span class="logo">🐍🪜</span>
+            <span class="logo"><img src="/images/logo.png" alt="Snakes & Ladders logo" /></span>
             <div>
-                <div class="title">Snakes &amp; Ladders <b>3D</b></div>
+                <div class="title">Snakes & Ladders <b>3D</b></div>
                 <div class="sub" id="mode-label">Local Game</div>
             </div>
         </div>
@@ -102,10 +105,12 @@
                 <label>Players</label>
                 <div id="db-players" class="player-chips"></div>
                 <div class="add-player-row">
-                    <input id="input-new-player" type="text" maxlength="18" placeholder="New player name" />
-                    <button id="btn-add-player" class="secondary">Add</button>
+                    <div class="search-wrapper">
+                        <input id="input-new-player" type="text" maxlength="18" placeholder="Search players..." autocomplete="off" />
+                        <div id="search-results" class="search-results hidden"></div>
+                    </div>
                 </div>
-                <p class="hint">Select players from the list or add new ones. Minimum 2 required.</p>
+                <p class="hint">Search and select players from the database. Minimum 2 required.</p>
             </div>
             <div id="setup-error" class="setup-error"></div>
             <button id="btn-start" class="primary big">Start Game</button>
@@ -114,6 +119,11 @@
 
     <!-- ======================= TOAST ======================= -->
     <div id="toast" class="hidden"></div>
+
+    <!-- ======================= BACKGROUND MUSIC ======================= -->
+    <audio id="bg-music" loop preload="auto" style="display:none;">
+        <source src="/audio/bg-retro.mp3" type="audio/mpeg">
+    </audio>
 
     <!-- ======================= RIDDLE MODAL ======================= -->
     <div id="riddle-overlay" class="overlay hidden">

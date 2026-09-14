@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -69,6 +70,18 @@ public class PlayerService {
     public Player createOrGet(String username) {
         return playerRepository.findByUsernameIgnoreCase(username)
                 .orElseGet(() -> playerRepository.save(new Player(username.trim())));
+    }
+
+    /** Search players by substring (case-insensitive), capped at limit. If query is blank, return first N players. */
+    public List<Player> search(String query, int limit) {
+        if (query == null || query.trim().isEmpty()) {
+            return playerRepository.findAll().stream().limit(limit).collect(Collectors.toList());
+        }
+        List<Player> results = playerRepository.findByUsernameContainingIgnoreCase(query.trim());
+        if (results.size() > limit) {
+            return results.subList(0, limit);
+        }
+        return results;
     }
 
     /** Record a finished match result for a player. */

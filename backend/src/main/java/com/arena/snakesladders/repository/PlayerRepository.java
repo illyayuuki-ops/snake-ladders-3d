@@ -17,6 +17,9 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
 
     boolean existsByUsernameIgnoreCase(String username);
 
+    /** Substring search for player names (case-insensitive). */
+    List<Player> findByUsernameContainingIgnoreCase(String query);
+
     /** Top players ordered by win rate, then total wins. */
     @Query("SELECT p FROM Player p WHERE p.totalGames > 0 " +
            "ORDER BY (CAST(p.totalWins AS double) / p.totalGames) DESC, p.totalWins DESC")
