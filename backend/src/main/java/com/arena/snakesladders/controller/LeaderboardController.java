@@ -4,6 +4,7 @@ import com.arena.snakesladders.dto.LeaderboardEntry;
 import com.arena.snakesladders.service.LeaderboardService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -19,10 +20,12 @@ public class LeaderboardController {
     /**
      * @param by    winrate | wins | fastest  (default winrate)
      * @param limit max entries (default 10)
+     * @param me    optional username to always include in results with their true global rank
      */
     @GetMapping
     public List<LeaderboardEntry> leaderboard(@RequestParam(defaultValue = "winrate") String by,
-                                              @RequestParam(defaultValue = "10") int limit) {
+                                              @RequestParam(defaultValue = "10") int limit,
+                                              @RequestParam(required = false) String me) {
         List<LeaderboardEntry> raw;
         switch (by.toLowerCase()) {
             case "wins":
@@ -36,10 +39,21 @@ public class LeaderboardController {
                 raw = leaderboardService.byWinRate(limit);
                 break;
         }
-        // Assign 1-based ranks.
+        // Assign 1-based ranks to top entries.
         for (int i = 0; i < raw.size(); i++) {
             raw.get(i).setRank(i + 1);
         }
+
+        // If "me" is provided and not already in the top list, append their entry with true global rank.
+        if (me != null && !me.trim().isEmpty()) {
+            boolean alreadyInTop = raw.stream().anyMatch(e -> e.getUsername().equalsIgnoreCase(me.trim()));
+            if (!alreadyInTop) {
+                leaderboardService.entryForPlayer(me.trim(), by).ifPresent(entry -> {
+                    raw.add(entry);
+                });
+            }
+        }
+
         return raw;
     }
 }

@@ -459,7 +459,8 @@
 
     /* ---------------- leaderboard ---------------- */
     function loadLeaderboard(by) {
-        renderLocalLeaderboard(by);
+        // Fetch from API with "me" parameter to include current player
+        G.api.leaderboard(by, 10, G.myName).then(data => renderLeaderboard(data, by)).catch(() => renderLocalLeaderboard(by));
     }
 
     function loadLocalLeaderboard() {
@@ -478,6 +479,40 @@
         try { localStorage.setItem("sl3d_lb", JSON.stringify(lb)); } catch (e) {}
         G.api.recordMatch(st.winner, st.mode, st.variant, true, st.turnCount, 1).catch(() => {});
     }
+    function renderLeaderboard(entries, by) {
+        const ol = $("leaderboard-list"); ol.innerHTML = "";
+        let meEntry = null;
+        // Separate the "me" entry if it's outside top 10 (rank > 10 or no rank assigned)
+        const topEntries = entries.filter(e => e.rank > 0 && e.rank <= 10);
+        const otherEntries = entries.filter(e => !(e.rank > 0 && e.rank <= 10));
+        if (otherEntries.length > 0) {
+            meEntry = otherEntries[0]; // Should be the "me" entry
+        }
+        // Render top entries
+        topEntries.forEach(e => {
+            const li = document.createElement("li");
+            const meta = by === "fastest" ? (e.fastestWinTurns != null ? e.fastestWinTurns + " turns" : "—")
+                : by === "wins" ? (e.totalWins + " wins") : Math.round((e.winRate || 0) * 100) + "% · " + e.totalWins + "W";
+            li.innerHTML = "<span class='lb-rank'>#" + e.rank + "</span><b>" + e.username + "</b> <span class='lb-meta'>" + meta + "</span>";
+            if (G.myName && e.username === G.myName) {
+                li.classList.add("is-me");
+            }
+            ol.appendChild(li);
+        });
+        // Render "me" entry if outside top 10
+        if (meEntry) {
+            const divider = document.createElement("li");
+            divider.className = "lb-divider";
+            divider.textContent = "…";
+            ol.appendChild(divider);
+            const li = document.createElement("li");
+            const meta = by === "fastest" ? (meEntry.fastestWinTurns != null ? meEntry.fastestWinTurns + " turns" : "—")
+                : by === "wins" ? (meEntry.totalWins + " wins") : Math.round((meEntry.winRate || 0) * 100) + "% · " + meEntry.totalWins + "W";
+            li.innerHTML = "<span class='lb-rank'>#" + meEntry.rank + "</span><b>" + meEntry.username + "</b> <span class='lb-meta'>" + meta + "</span>";
+            li.classList.add("is-me");
+            ol.appendChild(li);
+        }
+    }
     function renderLocalLeaderboard(by) {
         const lb = loadLocalLeaderboard();
         let sorted = lb.slice();
@@ -485,11 +520,14 @@
         else if (by === "fastest") sorted.sort((a, b) => (a.fastestWinTurns || 1e9) - (b.fastestWinTurns || 1e9));
         else sorted.sort((a, b) => (b.totalWins / (b.totalGames || 1)) - (a.totalWins / (a.totalGames || 1)));
         const ol = $("leaderboard-list"); ol.innerHTML = "";
-        sorted.slice(0, 10).forEach(e => {
+        sorted.slice(0, 10).forEach((e, i) => {
             const li = document.createElement("li");
             const meta = by === "fastest" ? (e.fastestWinTurns != null ? e.fastestWinTurns + " turns" : "—")
                 : by === "wins" ? (e.totalWins + " wins") : Math.round((e.totalWins / (e.totalGames || 1)) * 100) + "% · " + e.totalWins + "W";
-            li.innerHTML = "<b>" + e.username + "</b> <span class='lb-meta'>" + meta + "</span>";
+            li.innerHTML = "<span class='lb-rank'>#" + (i + 1) + "</span><b>" + e.username + "</b> <span class='lb-meta'>" + meta + "</span>";
+            if (G.myName && e.username === G.myName) {
+                li.classList.add("is-me");
+            }
             ol.appendChild(li);
         });
     }
@@ -503,6 +541,7 @@
         for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
         G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false; G.code = "LOCAL";
+        G.myName = selected[0]; // Track the first player as "me"
         const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
         G.engine = new LocalEngine();
         const st = G.engine.create({ mode: "LOCAL", variant: cfg.variant, difficulty: "EASY", players });
@@ -536,21 +575,11 @@
         async function loadPlayers() {
             try {
                 const list = await G.api.getPlayers();
+                G.allPlayers = list.map(p => p.username);
+                // Chips container starts empty - only selected players become chips
                 chips.innerHTML = "";
-                list.forEach(p => {
-                    const chip = document.createElement("div");
-                    chip.className = "player-chip";
-                    chip.dataset.name = p.username;
-                    const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
-                    chip.appendChild(dot);
-                    chip.appendChild(document.createTextNode(p.username));
-                    chip.onclick = () => {
-                        chip.classList.toggle("selected");
-                        updateSearchVisibility();
-                    };
-                    chips.appendChild(chip);
-                });
             } catch (e) {
+                G.allPlayers = [];
                 chips.innerHTML = "<span style='font-size:11px;color:var(--muted)'>Could not load players</span>";
             }
         }
@@ -655,14 +684,14 @@
                     searchResults.classList.add("hidden");
                     return;
                 }
-                searchDebounce = setTimeout(async () => {
-                    try {
-                        const results = await G.api.searchPlayers(query, 20);
-                        renderSearchResults(results, query);
-                    } catch (e) {
-                        searchResults.classList.add("hidden");
-                    }
-                }, 200);
+                searchDebounce = setTimeout(() => {
+                    // Filter locally from G.allPlayers (case-insensitive substring match)
+                    const filtered = (G.allPlayers || [])
+                        .filter(name => name.toLowerCase().includes(query.toLowerCase()))
+                        .slice(0, 10)
+                        .map(username => ({ username }));
+                    renderSearchResults(filtered, query);
+                }, 150);
             });
 
             // Enter key to commit typed name as new

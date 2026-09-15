@@ -537,21 +537,11 @@
         async function loadPlayers() {
             try {
                 const list = await G.api.getPlayers();
+                G.allPlayers = list.map(p => p.username);
+                // Chips container starts empty - only selected players become chips
                 chips.innerHTML = "";
-                list.forEach(p => {
-                    const chip = document.createElement("div");
-                    chip.className = "player-chip";
-                    chip.dataset.name = p.username;
-                    const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
-                    chip.appendChild(dot);
-                    chip.appendChild(document.createTextNode(p.username));
-                    chip.onclick = () => {
-                        chip.classList.toggle("selected");
-                        updateSearchVisibility();
-                    };
-                    chips.appendChild(chip);
-                });
             } catch (e) {
+                G.allPlayers = [];
                 chips.innerHTML = "<span style='font-size:11px;color:var(--muted)'>Could not load players</span>";
             }
         }
@@ -656,14 +646,14 @@
                     searchResults.classList.add("hidden");
                     return;
                 }
-                searchDebounce = setTimeout(async () => {
-                    try {
-                        const results = await G.api.searchPlayers(query, 20);
-                        renderSearchResults(results, query);
-                    } catch (e) {
-                        searchResults.classList.add("hidden");
-                    }
-                }, 200);
+                searchDebounce = setTimeout(() => {
+                    // Filter locally from G.allPlayers (case-insensitive substring match)
+                    const filtered = (G.allPlayers || [])
+                        .filter(name => name.toLowerCase().includes(query.toLowerCase()))
+                        .slice(0, 10)
+                        .map(username => ({ username }));
+                    renderSearchResults(filtered, query);
+                }, 150);
             });
 
             // Enter key to commit typed name as new

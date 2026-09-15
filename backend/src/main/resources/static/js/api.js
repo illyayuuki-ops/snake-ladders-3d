@@ -37,7 +37,7 @@
                 username, mode, variant, won, turns, placement
             });
         }
-        leaderboard(by, limit) { return this.get("/leaderboard?by=" + (by || "winrate") + "&limit=" + (limit || 10)); }
+        leaderboard(by, limit, me) { return this.get("/leaderboard?by=" + (by || "winrate") + "&limit=" + (limit || 10) + (me ? "&me=" + enc(me) : "")); }
         riddle() { return this.get("/riddle"); }
         searchPlayers(q, limit) { return this.get("/players/search?q=" + enc(q || "") + "&limit=" + (limit || 20)); }
     }
