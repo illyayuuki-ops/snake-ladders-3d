@@ -108,9 +108,22 @@
 
     function startBgMusic() {
         if (G.bgMusic.playing) return;
+        // Try HTML audio element first (file-based)
+        const audioEl = $("bg-music");
+        if (audioEl && audioEl.src) {
+            audioEl.volume = 0.3;
+            audioEl.play().catch(() => {
+                // Fallback to procedural if file fails
+                ensureAudio();
+                if (G.audio) createRetroMusic();
+            });
+            G.bgMusic.node = audioEl;
+            G.bgMusic.playing = true;
+            return;
+        }
+        // Fallback to procedural
         ensureAudio();
         if (!G.audio) return;
-        // Resume audio context if suspended (browser autoplay policy)
         if (G.audio.state === "suspended") {
             G.audio.resume().then(() => createRetroMusic());
         } else {
@@ -120,6 +133,11 @@
 
     function stopBgMusic() {
         G.bgMusic.playing = false;
+        const audioEl = $("bg-music");
+        if (audioEl) {
+            audioEl.pause();
+            audioEl.currentTime = 0;
+        }
         if (G.bgMusic.gain) {
             G.bgMusic.gain.disconnect();
             G.bgMusic.gain = null;
@@ -527,7 +545,10 @@
                     const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
                     chip.appendChild(dot);
                     chip.appendChild(document.createTextNode(p.username));
-                    chip.onclick = () => chip.classList.toggle("selected");
+                    chip.onclick = () => {
+                        chip.classList.toggle("selected");
+                        updateSearchVisibility();
+                    };
                     chips.appendChild(chip);
                 });
             } catch (e) {
@@ -582,6 +603,12 @@
                 toast("Already selected");
                 return;
             }
+            // Enforce max 4 players
+            const selectedCount = chips.querySelectorAll(".player-chip.selected").length;
+            if (selectedCount >= 4) {
+                toast("Maximum 4 players allowed");
+                return;
+            }
             // Select the chip if it exists
             const existingChip = chips.querySelector(`.player-chip[data-name="${trimmedName}"]`);
             if (existingChip) {
@@ -591,14 +618,34 @@
                 const chip = document.createElement("div");
                 chip.className = "player-chip selected";
                 chip.dataset.name = trimmedName;
-                const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[0];
+                const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[selectedCount % PALETTE.length];
                 chip.appendChild(dot);
                 chip.appendChild(document.createTextNode(trimmedName));
-                chip.onclick = () => chip.classList.toggle("selected");
+                chip.onclick = () => {
+                    chip.classList.toggle("selected");
+                    updateSearchVisibility();
+                };
                 chips.appendChild(chip);
             }
             nameInput.value = "";
             searchResults.classList.add("hidden");
+            updateSearchVisibility();
+        }
+
+        function updateSearchVisibility() {
+            const selectedCount = chips.querySelectorAll(".player-chip.selected").length;
+            const addPlayerRow = document.querySelector(".add-player-row");
+            if (addPlayerRow) {
+                addPlayerRow.style.display = selectedCount >= 4 ? "none" : "block";
+            }
+            // Also update chip click handlers to call updateSearchVisibility on deselect
+            chips.querySelectorAll(".player-chip").forEach(chip => {
+                const originalClick = chip.onclick;
+                chip.onclick = (e) => {
+                    if (originalClick) originalClick.call(chip, e);
+                    updateSearchVisibility();
+                };
+            });
         }
 
         if (nameInput) {
@@ -639,6 +686,7 @@
         }
 
         await loadPlayers();
+        updateSearchVisibility();
 
         $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();
