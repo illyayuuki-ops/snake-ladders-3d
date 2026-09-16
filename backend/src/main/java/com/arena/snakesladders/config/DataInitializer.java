@@ -5,7 +5,9 @@ import com.arena.snakesladders.service.PlayerService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Seeds the full imported gamertag roster with randomized, restart-stable stats.
@@ -22,7 +24,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Full imported roster (~135 gamertags)
+        // Full imported roster (~135 gamertags) - duplicates removed
         String[] names = {
             "RedLycoris", "ChisatoVibes", "TakinaAim", "DA_Friends", "LycoRecoFan",
             "SilentAssassin", "ShadowStep", "NightStalker", "PhantomBlade", "GhostWalker",
@@ -39,8 +41,7 @@ public class DataInitializer implements CommandLineRunner {
             "TeamNDGO", "TeamOCT", "TeamCMEN", "TeamSTRQ", "TeamOZMA",
             "AceOps", "HappyHuntsmen", "MaroonSahara", "JoachimA", "ElmEderne",
             "VineZeki", "HarrietBree", "CloverEbi", "FionaThreep", "RobynHill",
-            "JoannaGreenleaf", "MayMarigold", "HarrietBree", "ElmEderne", "VineZeki",
-            "CloverEbi", "FionaThreep", "RobynHill", "JoannaGreenleaf", "MayMarigold",
+            "JoannaGreenleaf", "MayMarigold",
             "HitmarkerKing", "OneTapGod", "HeadshotHero", "FlickShotPro", "AimBotCalibrated",
             "TrackingMaster", "SprayControl", "RecoilPattern", "CrosshairPlacement", "PreAimKing",
             "AngleHolder", "PeekMaster", "EntryFragger", "ClutchGod", "AceHunter",
@@ -58,8 +59,13 @@ public class DataInitializer implements CommandLineRunner {
         // Only seed if database is empty
         if (playerService.findAll().isEmpty()) {
             Random rand = new Random(42); // Fixed seed for restart-stable stats
+            Set<String> seen = new HashSet<>(); // Defensive deduplication
 
             for (String name : names) {
+                // Defensive: skip if already processed (case-insensitive)
+                if (!seen.add(name.toLowerCase())) {
+                    continue;
+                }
                 Player p = playerService.createOrGet(name);
 
                 // Generate randomized stats
