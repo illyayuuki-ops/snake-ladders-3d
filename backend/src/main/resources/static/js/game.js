@@ -113,7 +113,8 @@
         const source = audioEl && audioEl.querySelector("source[src]");
         if (source) {
             audioEl.volume = 0.2;
-            audioEl.play().catch(() => {
+            audioEl.play().catch((e) => {
+                console.error("[bg-music] HTML audio play failed:", e);
                 // Fallback to procedural if file fails
                 ensureAudio();
                 if (G.audio) createRetroMusic();
@@ -546,6 +547,7 @@
         const cfg = G.config;
         const selected = Array.from(document.querySelectorAll(".player-chip.selected")).map(el => el.dataset.name);
         if (selected.length < 2) { toast("Select at least 2 players"); return; }
+        if (G.soundOn) startBgMusic();
         for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
         G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false; G.code = "LOCAL";
@@ -556,7 +558,6 @@
         $("setup-modal").classList.add("hidden");
         applyState(st, false);
         scheduleNext(st);
-        if (G.soundOn) startBgMusic();
     }
 
     /* ---------------- setup modal UI ---------------- */
