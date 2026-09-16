@@ -1,0 +1,16 @@
+# Build output / artifacts
+target/
+backend/target/
+*.class
+
+# Logs
+*.log
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# OS cruft
+.DS_Store
+Thumbs.db

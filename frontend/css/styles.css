@@ -366,6 +366,9 @@ input[type="range"] { width: 100%; }
     font-size: 18px; font-weight: 700; margin-bottom: 16px; line-height: 1.6;
     white-space: pre-line;
 }
+.riddle-line {
+    font-size: 18px; font-weight: 700; line-height: 1.5; padding: 2px 0;
+}
 .riddle-choices {
     display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
 }

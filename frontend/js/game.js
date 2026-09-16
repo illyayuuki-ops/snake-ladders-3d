@@ -7,6 +7,13 @@
     const $ = (id) => document.getElementById(id);
     const PALETTE = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899"];
 
+    const VARIANT_DESCS = {
+        CLASSIC: "Classic board with standard snakes and ladders.",
+        POWERUP: "Classic board plus collectible power-ups: Shield, Double Roll, Freeze.",
+        CHAOS: "The board reshuffles every 3 turns. Adapt or lose!",
+        SPEED: "50-tile sprint with dense ladders for faster matches."
+    };
+
     const G = {
         api: new Api(),
         board: null, dice: null,
@@ -20,12 +27,6 @@
         riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null },
         // background music state
         bgMusic: { node: null, gain: null, playing: false }
-    };
-    const VARIANT_DESCS = {
-        CLASSIC: "Classic board with standard snakes and ladders.",
-        POWERUP: "Classic board plus collectible power-ups: Shield, Double Roll, Freeze.",
-        CHAOS: "The board reshuffles every 3 turns. Adapt or lose!",
-        SPEED: "50-tile sprint with dense ladders for faster matches."
     };
     let stateQueue = null;
 
@@ -109,8 +110,9 @@
         if (G.bgMusic.playing) return;
         // Try HTML audio element first (file-based)
         const audioEl = $("bg-music");
-        if (audioEl && audioEl.src) {
-            audioEl.volume = 0.3;
+        const source = audioEl && audioEl.querySelector("source[src]");
+        if (source) {
+            audioEl.volume = 0.2;
             audioEl.play().catch(() => {
                 // Fallback to procedural if file fails
                 ensureAudio();
@@ -162,7 +164,13 @@
         const feedbackEl = $("riddle-feedback");
         const submitBtn = $("riddle-submit");
 
-        questionEl.textContent = riddle.question;
+        questionEl.innerHTML = "";
+        riddle.question.split("\n").forEach(line => {
+            const lineDiv = document.createElement("div");
+            lineDiv.className = "riddle-line";
+            lineDiv.textContent = line;
+            questionEl.appendChild(lineDiv);
+        });
         choicesEl.innerHTML = "";
         inputEl.classList.add("hidden");
         feedbackEl.classList.add("hidden");

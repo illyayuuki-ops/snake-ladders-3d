@@ -1,171 +1,114 @@
 /* ============================================================
    riddles.js — local riddle pool (zero-cost, offline)
-   Each riddle is a haiku (5-7-5 syllables) with hidden answer
+   Each riddle is a haiku (5-7-5 syllables) with a short answer.
+   The three haiku lines are joined with "\n" so the modal can
+   render them stacked. This pool is the offline fallback for
+   both local play and failed Gemini API calls.
    ============================================================ */
 (function (global) {
     "use strict";
 
     const RIDDLES = [
         {
-            question: "Black keys, white keys sing\nNo lock opens to their tune\nMusic flows within",
-            answer: "A piano",
-            choices: ["A piano", "A map", "A computer", "A door"]
+            question: "Shiny head on ground\nToss me up and watch me spin\nTail is what you find",
+            answer: "coin",
+            choices: ["coin", "button", "ring", "stamp"]
         },
         {
-            question: "Round head, tail behind\nNo body in the middle\nSpends but has no life",
-            answer: "A coin",
-            choices: ["A coin", "A snake", "A comet", "A worm"]
+            question: "Dark within the room\nWax grows thin and wick burns bright\nShadow dances on",
+            answer: "candle",
+            choices: ["candle", "torch", "lantern", "match"]
         },
         {
-            question: "Wet more as it dries\nHangs upon the bathroom rack\nSoft thirst drinks the bath",
-            answer: "A towel",
-            choices: ["A towel", "A sponge", "A cloth", "A mop"]
+            question: "Face with hands that move\nTicks away each passing hour\nNo eye can see it",
+            answer: "clock",
+            choices: ["clock", "watch", "calendar", "compass"]
         },
         {
-            question: "Catch it, cannot throw\nWinter brings it uninvited\nRest cures the sneeze fast",
-            answer: "A cold",
-            choices: ["A cold", "A ball", "A fish", "A frisbee"]
+            question: "Shout into the cave\nMy cry returns from far away\nSilent once again",
+            answer: "echo",
+            choices: ["echo", "sound", "voice", "shadow"]
         },
         {
-            question: "Many teeth in row\nCannot bite a single thing\nStraightens tangled hair",
-            answer: "A comb",
-            choices: ["A comb", "A saw", "A zipper", "A gear"]
+            question: "Sunlight on the wall\nStretch and shrink as dusk arrives\nNo shape of its own",
+            answer: "shadow",
+            choices: ["shadow", "reflection", "silhouette", "ghost"]
         },
         {
-            question: "Four legs standing tall\nCannot walk a single step\nHolds your dinner plate",
-            answer: "A table",
-            choices: ["A table", "A chair", "A stool", "A bed"]
+            question: "Heavy iron claw\nLets the drifting ship be still\nHolds the boat in place",
+            answer: "anchor",
+            choices: ["anchor", "hook", "chain", "weight"]
         },
         {
-            question: "One eye sees no light\nThread passes through the small hole\nMends the torn apart",
-            answer: "A needle",
-            choices: ["A needle", "A storm", "A potato", "A camera"]
+            question: "Needle seeks the north\nSpinning till it points the way\nTraveler's true friend",
+            answer: "compass",
+            choices: ["compass", "gyroscope", "map", "magnet"]
         },
         {
-            question: "Numbers climb each year\nNever once goes back again\nBirthdays mark the rise",
-            answer: "Your age",
-            choices: ["Your age", "A balloon", "Smoke", "A rocket"]
+            question: "Bridge of colored light\nArc of sun and rain at once\nFades when light departs",
+            answer: "rainbow",
+            choices: ["rainbow", "kite", "prism", "arc"]
         },
         {
-            question: "Pages hold the words\nSilent stories wait inside\nOpen, read, travel",
-            answer: "A book",
-            choices: ["A book", "A dictionary", "A letter", "A sign"]
+            question: "Surface still and clear\nShows the face that looks right back\nTruth in quiet glass",
+            answer: "mirror",
+            choices: ["mirror", "pond", "glass", "window"]
         },
         {
-            question: "Long neck, no head found\nCork guards the liquid within\nPour and share the drink",
-            answer: "A bottle",
-            choices: ["A bottle", "A shirt", "A guitar", "A vase"]
+            question: "Tower on the rocks\nBeacon sweeps the darkened sea\nShips find safe harbor",
+            answer: "lighthouse",
+            choices: ["lighthouse", "beacon", "tower", "lamp"]
         },
         {
-            question: "Corner holds the world\nSticky back carries the mail\nTravels far and wide",
-            answer: "A stamp",
-            choices: ["A stamp", "A coin", "A postcard", "A letter"]
+            question: "Steam begins to rise\nBoiling water waits inside\nTea pours from the spout",
+            answer: "teapot",
+            choices: ["teapot", "kettle", "jar", "flask"]
         },
         {
-            question: "Thumb and fingers four\nNot alive but fits the hand\nWarms against the cold",
-            answer: "A glove",
-            choices: ["A glove", "A hand", "A mitten", "A puppet"]
+            question: "Spanning wide and far\nCarries feet across the stream\nArches hold the road",
+            answer: "bridge",
+            choices: ["bridge", "road", "tunnel", "path"]
         },
         {
-            question: "Full of holes yet holds\nWater soaks in every pore\nSqueeze and it lets go",
-            answer: "A sponge",
-            choices: ["A sponge", "A net", "A colander", "A bucket"]
+            question: "Tube peers at the night\nFinds bright dots among dark space\nSecrets in the sky",
+            answer: "telescope",
+            choices: ["telescope", "binoculars", "microscope", "camera"]
         },
         {
-            question: "Break without a touch\nWords once spoken bind the heart\nTrust once lost is gone",
-            answer: "A promise",
-            choices: ["A promise", "A heart", "A record", "A rule"]
+            question: "Flame dances, hungry\nOrange tongues lick upward fast\nWarmth from wood and spark",
+            answer: "fire",
+            choices: ["fire", "flame", "torch", "lamp"]
         },
         {
-            question: "Goes up, goes down, stays\nSteps connect each floor to floor\nFeet move, stairs stand firm",
-            answer: "A staircase",
-            choices: ["A staircase", "An elevator", "A ladder", "A hill"]
+            question: "Storm clouds churn above\nCrack of war within the clouds\nSky drums its loud beat",
+            answer: "thunder",
+            choices: ["thunder", "lightning", "drum", "boom"]
         },
         {
-            question: "Has a ring, no hand\nVoice travels through the wire\nHello, who is this?",
-            answer: "A phone",
-            choices: ["A phone", "A bell", "A planet", "A circle"]
+            question: "Metal teeth in door\nTurn me and the lock will yield\nFreedom waits beyond",
+            answer: "key",
+            choices: ["key", "lock", "button", "lever"]
         },
         {
-            question: "Branches, no leaves grow\nMoney kept in vaulted rooms\nInterest blooms in time",
-            answer: "A bank",
-            choices: ["A bank", "A tree", "A river", "A family"]
+            question: "Drift down from the sky\nOne of many, soft and white\nMelt on tongue at once",
+            answer: "snowflake",
+            choices: ["snowflake", "star", "flake", "crystal"]
         },
         {
-            question: "Fills the room with light\nTakes no space, no weight at all\nDarkness flees away",
-            answer: "Light",
-            choices: ["Light", "Air", "Sound", "Shadow"]
+            question: "Twigs weave bowl of care\nHidden in the crook of branches\nEggs warm till they hatch",
+            answer: "nest",
+            choices: ["nest", "crib", "web", "hollow"]
         },
         {
-            question: "Always just ahead\nNever caught by reaching hand\nTomorrow becomes today",
-            answer: "The future",
-            choices: ["The future", "Your nose", "A mirror", "Time"]
+            question: "Mountain holds a flame\nPressure builds beneath the crust\nEarth erupts in fire",
+            answer: "volcano",
+            choices: ["volcano", "mountain", "furnace", "fissure"]
         },
         {
-            question: "Dig and it grows wide\nEmpty space expands below\nMore dirt, bigger hole",
-            answer: "A hole",
-            choices: ["A hole", "A pile", "A debt", "A gap"]
-        },
-        {
-            question: "Cities, no houses\nMountains, trees, and rivers drawn\nPaper holds the world",
-            answer: "A map",
-            choices: ["A map", "A globe", "A drawing", "A model"]
-        },
-        {
-            question: "Has a bed, no sleep\nWater flows through stone and sand\nJourney to the sea",
-            answer: "A river",
-            choices: ["A river", "A truck", "A garden", "A bedroom"]
-        },
-        {
-            question: "Runs but has no legs\nFlows downhill, never walks back\nLife drinks from its path",
-            answer: "Water",
-            choices: ["Water", "A clock", "A nose", "A motor"]
-        },
-        {
-            question: "Face with hands that move\nNo eyes to see the passing\nTicks the seconds by",
-            answer: "A clock",
-            choices: ["A clock", "A coin", "A die", "A card"]
-        },
-        {
-            question: "Cracked, made, told, played\nLaughter bursts from word and wit\nJoy in punchline form",
-            answer: "A joke",
-            choices: ["A joke", "A code", "A game", "A nut"]
-        },
-        {
-            question: "Heart that does not beat\nGreen leaves guard the tender core\nSteam reveals the prize",
-            answer: "An artichoke",
-            choices: ["An artichoke", "A stone", "A tree", "A machine"]
-        },
-        {
-            question: "Speak and it is gone\nQuiet holds the loudest power\nListen to the hush",
-            answer: "Silence",
-            choices: ["Silence", "Glass", "A promise", "Trust"]
-        },
-        {
-            question: "Many keys, no locks\nIvory sings beneath the hands\nSongs without a door",
-            answer: "A piano",
-            choices: ["A piano", "A keyboard", "A map", "A typewriter"]
-        },
-        {
-            question: "Left hand holds it tight\nRight hand cannot reach its bend\nElbow knows the trick",
-            answer: "Your right elbow",
-            choices: ["Your right elbow", "A feather", "A pencil", "A coin"]
-        },
-        {
-            question: "Bottom at the top\nTwo legs carry you along\nFeet touch ground below",
-            answer: "Your legs",
-            choices: ["Your legs", "A bottle", "A mountain", "A cup"]
-        },
-        {
-            question: "Through towns, over hills\nNever moves an inch itself\nCars and feet travel",
-            answer: "A road",
-            choices: ["A road", "A river", "A train", "A path"]
-        },
-        {
-            question: "Morning four legs crawl\nNoon walks on two upright legs\nEvening adds a cane",
-            answer: "A human",
-            choices: ["A human", "A dog", "A cat", "A bird"]
-        },
+            question: "Round a star it spins\nSpins through the void, cold and dark\nRocks and rings may form",
+            answer: "planet",
+            choices: ["planet", "star", "moon", "comet"]
+        }
     ];
 
     function pickRandom() {

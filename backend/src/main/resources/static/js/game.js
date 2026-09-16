@@ -110,8 +110,9 @@
         if (G.bgMusic.playing) return;
         // Try HTML audio element first (file-based)
         const audioEl = $("bg-music");
-        if (audioEl && audioEl.src) {
-            audioEl.volume = 0.3;
+        const source = audioEl && audioEl.querySelector("source[src]");
+        if (source) {
+            audioEl.volume = 0.2;
             audioEl.play().catch(() => {
                 // Fallback to procedural if file fails
                 ensureAudio();
@@ -163,7 +164,13 @@
         const feedbackEl = $("riddle-feedback");
         const submitBtn = $("riddle-submit");
 
-        questionEl.textContent = riddle.question;
+        questionEl.innerHTML = "";
+        riddle.question.split("\n").forEach(line => {
+            const lineDiv = document.createElement("div");
+            lineDiv.className = "riddle-line";
+            lineDiv.textContent = line;
+            questionEl.appendChild(lineDiv);
+        });
         choicesEl.innerHTML = "";
         inputEl.classList.add("hidden");
         feedbackEl.classList.add("hidden");

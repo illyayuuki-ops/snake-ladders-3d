@@ -23,38 +23,26 @@ public class RiddleService {
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
     private final List<Riddle> localPool = Arrays.asList(
-            new Riddle("Black keys, white keys sing\nNo lock opens to their tune\nMusic flows within", "A piano", Arrays.asList("A piano", "A map", "A computer", "A door")),
-            new Riddle("Round head, tail behind\nNo body in the middle\nSpends but has no life", "A coin", Arrays.asList("A coin", "A snake", "A comet", "A worm")),
-            new Riddle("Wet more as it dries\nHangs upon the bathroom rack\nSoft thirst drinks the bath", "A towel", Arrays.asList("A towel", "A sponge", "A cloth", "A mop")),
-            new Riddle("Catch it, cannot throw\nWinter brings it uninvited\nRest cures the sneeze fast", "A cold", Arrays.asList("A cold", "A ball", "A fish", "A frisbee")),
-            new Riddle("Many teeth in row\nCannot bite a single thing\nStraightens tangled hair", "A comb", Arrays.asList("A comb", "A saw", "A zipper", "A gear")),
-            new Riddle("Four legs standing tall\nCannot walk a single step\nHolds your dinner plate", "A table", Arrays.asList("A table", "A chair", "A stool", "A bed")),
-            new Riddle("One eye sees no light\nThread passes through the small hole\nMends the torn apart", "A needle", Arrays.asList("A needle", "A storm", "A potato", "A camera")),
-            new Riddle("Numbers climb each year\nNever once goes back again\nBirthdays mark the rise", "Your age", Arrays.asList("Your age", "A balloon", "Smoke", "A rocket")),
-            new Riddle("Pages hold the words\nSilent stories wait inside\nOpen, read, travel", "A book", Arrays.asList("A book", "A dictionary", "A letter", "A sign")),
-            new Riddle("Long neck, no head found\nCork guards the liquid within\nPour and share the drink", "A bottle", Arrays.asList("A bottle", "A shirt", "A guitar", "A vase")),
-            new Riddle("Corner holds the world\nSticky back carries the mail\nTravels far and wide", "A stamp", Arrays.asList("A stamp", "A coin", "A postcard", "A letter")),
-            new Riddle("Thumb and fingers four\nNot alive but fits the hand\nWarms against the cold", "A glove", Arrays.asList("A glove", "A hand", "A mitten", "A puppet")),
-            new Riddle("Full of holes yet holds\nWater soaks in every pore\nSqueeze and it lets go", "A sponge", Arrays.asList("A sponge", "A net", "A colander", "A bucket")),
-            new Riddle("Break without a touch\nWords once spoken bind the heart\nTrust once lost is gone", "A promise", Arrays.asList("A promise", "A heart", "A record", "A rule")),
-            new Riddle("Goes up, goes down, stays\nSteps connect each floor to floor\nFeet move, stairs stand firm", "A staircase", Arrays.asList("A staircase", "An elevator", "A ladder", "A hill")),
-            new Riddle("Has a ring, no hand\nVoice travels through the wire\nHello, who is this?", "A phone", Arrays.asList("A phone", "A bell", "A planet", "A circle")),
-            new Riddle("Branches, no leaves grow\nMoney kept in vaulted rooms\nInterest blooms in time", "A bank", Arrays.asList("A bank", "A tree", "A river", "A family")),
-            new Riddle("Fills the room with light\nTakes no space, no weight at all\nDarkness flees away", "Light", Arrays.asList("Light", "Air", "Sound", "Shadow")),
-            new Riddle("Always just ahead\nNever caught by reaching hand\nTomorrow becomes today", "The future", Arrays.asList("The future", "Your nose", "A mirror", "Time")),
-            new Riddle("Dig and it grows wide\nEmpty space expands below\nMore dirt, bigger hole", "A hole", Arrays.asList("A hole", "A pile", "A debt", "A gap")),
-            new Riddle("Cities, no houses\nMountains, trees, and rivers drawn\nPaper holds the world", "A map", Arrays.asList("A map", "A globe", "A drawing", "A model")),
-            new Riddle("Has a bed, no sleep\nWater flows through stone and sand\nJourney to the sea", "A river", Arrays.asList("A river", "A truck", "A garden", "A bedroom")),
-            new Riddle("Runs but has no legs\nFlows downhill, never walks back\nLife drinks from its path", "Water", Arrays.asList("Water", "A clock", "A nose", "A motor")),
-            new Riddle("Face with hands that move\nNo eyes to see the passing\nTicks the seconds by", "A clock", Arrays.asList("A clock", "A coin", "A die", "A card")),
-            new Riddle("Cracked, made, told, played\nLaughter bursts from word and wit\nJoy in punchline form", "A joke", Arrays.asList("A joke", "A code", "A game", "A nut")),
-            new Riddle("Heart that does not beat\nGreen leaves guard the tender core\nSteam reveals the prize", "An artichoke", Arrays.asList("An artichoke", "A stone", "A tree", "A machine")),
-            new Riddle("Speak and it is gone\nQuiet holds the loudest power\nListen to the hush", "Silence", Arrays.asList("Silence", "Glass", "A promise", "Trust")),
-            new Riddle("Many keys, no locks\nIvory sings beneath the hands\nSongs without a door", "A piano", Arrays.asList("A piano", "A keyboard", "A map", "A typewriter")),
-            new Riddle("Left hand holds it tight\nRight hand cannot reach its bend\nElbow knows the trick", "Your right elbow", Arrays.asList("Your right elbow", "A feather", "A pencil", "A coin")),
-            new Riddle("Bottom at the top\nTwo legs carry you along\nFeet touch ground below", "Your legs", Arrays.asList("Your legs", "A bottle", "A mountain", "A cup")),
-            new Riddle("Through towns, over hills\nNever moves an inch itself\nCars and feet travel", "A road", Arrays.asList("A road", "A river", "A train", "A path")),
-            new Riddle("Morning four legs crawl\nNoon walks on two upright legs\nEvening adds a cane", "A human", Arrays.asList("A human", "A dog", "A cat", "A bird"))
+            new Riddle("Shiny head on ground\nToss me up and watch me spin\nTail is what you find", "coin", Arrays.asList("coin", "button", "ring", "stamp")),
+            new Riddle("Dark within the room\nWax grows thin and wick burns bright\nShadow dances on", "candle", Arrays.asList("candle", "torch", "lantern", "match")),
+            new Riddle("Face with hands that move\nTicks away each passing hour\nNo eye can see it", "clock", Arrays.asList("clock", "watch", "calendar", "compass")),
+            new Riddle("Shout into the cave\nMy cry returns from far away\nSilent once again", "echo", Arrays.asList("echo", "sound", "voice", "shadow")),
+            new Riddle("Sunlight on the wall\nStretch and shrink as dusk arrives\nNo shape of its own", "shadow", Arrays.asList("shadow", "reflection", "silhouette", "ghost")),
+            new Riddle("Heavy iron claw\nLets the drifting ship be still\nHolds the boat in place", "anchor", Arrays.asList("anchor", "hook", "chain", "weight")),
+            new Riddle("Needle seeks the north\nSpinning till it points the way\nTraveler's true friend", "compass", Arrays.asList("compass", "gyroscope", "map", "magnet")),
+            new Riddle("Bridge of colored light\nArc of sun and rain at once\nFades when light departs", "rainbow", Arrays.asList("rainbow", "kite", "prism", "arc")),
+            new Riddle("Surface still and clear\nShows the face that looks right back\nTruth in quiet glass", "mirror", Arrays.asList("mirror", "pond", "glass", "window")),
+            new Riddle("Tower on the rocks\nBeacon sweeps the darkened sea\nShips find safe harbor", "lighthouse", Arrays.asList("lighthouse", "beacon", "tower", "lamp")),
+            new Riddle("Steam begins to rise\nBoiling water waits inside\nTea pours from the spout", "teapot", Arrays.asList("teapot", "kettle", "jar", "flask")),
+            new Riddle("Spanning wide and far\nCarries feet across the stream\nArches hold the road", "bridge", Arrays.asList("bridge", "road", "tunnel", "path")),
+            new Riddle("Tube peers at the night\nFinds bright dots among dark space\nSecrets in the sky", "telescope", Arrays.asList("telescope", "binoculars", "microscope", "camera")),
+            new Riddle("Flame dances, hungry\nOrange tongues lick upward fast\nWarmth from wood and spark", "fire", Arrays.asList("fire", "flame", "torch", "lamp")),
+            new Riddle("Storm clouds churn above\nCrack of war within the clouds\nSky drums its loud beat", "thunder", Arrays.asList("thunder", "lightning", "drum", "boom")),
+            new Riddle("Metal teeth in door\nTurn me and the lock will yield\nFreedom waits beyond", "key", Arrays.asList("key", "lock", "button", "lever")),
+            new Riddle("Drift down from the sky\nOne of many, soft and white\nMelt on tongue at once", "snowflake", Arrays.asList("snowflake", "star", "flake", "crystal")),
+            new Riddle("Twigs weave bowl of care\nHidden in the crook of branches\nEggs warm till they hatch", "nest", Arrays.asList("nest", "crib", "web", "hollow")),
+            new Riddle("Mountain holds a flame\nPressure builds beneath the crust\nEarth erupts in fire", "volcano", Arrays.asList("volcano", "mountain", "furnace", "fissure")),
+            new Riddle("Round a star it spins\nSpins through the void, cold and dark\nRocks and rings may form", "planet", Arrays.asList("planet", "star", "moon", "comet"))
     );
 
     @PostConstruct
@@ -90,10 +78,13 @@ public class RiddleService {
             return null;
         }
 
-        String prompt = "Generate a single short riddle in strict 5-7-5 haiku format (three lines with 5, 7, 5 syllables). " +
+        String prompt = "Generate a single riddle in strict 5-7-5 haiku form: exactly three lines with 5, 7, then 5 syllables. " +
                 "Return ONLY a JSON object with exactly these fields: " +
-                "question (string with \\n line breaks for the three haiku lines), answer (string), choices (array of 4 strings including the correct answer). " +
-                "Make the riddle clever but solvable in 15 seconds. No extra text, no markdown formatting.";
+                "question (a single string whose three haiku lines are separated by \\n), " +
+                "answer (a single word or short phrase), " +
+                "choices (an array of exactly 4 strings, one of which is exactly the answer string). " +
+                "The answer must appear verbatim in choices and the riddle must be solvable in the time allowed. " +
+                "No extra text, no markdown, no surrounding explanation.";
 
         Map<String, Object> requestBody = new HashMap<>();
         List<Map<String, Object>> contents = new ArrayList<>();
@@ -124,9 +115,9 @@ public class RiddleService {
                     Map<String, Object> contentResp = (Map<String, Object>) candidate.get("content");
                     List<Map<String, String>> partsResp = (List<Map<String, String>>) contentResp.get("parts");
                     if (!partsResp.isEmpty()) {
-                        String jsonText = partsResp.get(0).get("text").trim();
-                        jsonText = jsonText.replaceAll("^```json\\s*", "").replaceAll("\\s*```$", "");
-                        return parseRiddleJson(jsonText);
+            String jsonText = partsResp.get(0).get("text").trim();
+                         jsonText = jsonText.replaceAll("^```json\\s*", "").replaceAll("\\s*```$", "");
+                         return parseRiddleJson(jsonText);
                     }
                 }
             }
@@ -142,11 +133,20 @@ public class RiddleService {
             String question = (String) map.get("question");
             String answer = (String) map.get("answer");
             List<String> choices = (List<String>) map.get("choices");
-            if (question != null && answer != null && choices != null && choices.size() == 4) {
-                return new Riddle(question, answer, choices);
+            if (question == null || answer == null || choices == null || choices.size() != 4) {
+                return null;
             }
+            String[] lines = question.trim().split("\\n");
+            if (lines.length != 3) {
+                return null;
+            }
+            boolean answerPresent = choices.stream().anyMatch(c -> c != null && c.equalsIgnoreCase(answer));
+            if (!answerPresent) {
+                return null;
+            }
+            return new Riddle(question, answer, choices);
         } catch (Exception e) {
-            // Parse failed
+            // Parse failed -> caller falls back to local pool
         }
         return null;
     }
