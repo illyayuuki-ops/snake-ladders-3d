@@ -5,13 +5,14 @@ import com.arena.snakesladders.service.PlayerService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
 /**
  * Seeds the full imported gamertag roster with randomized, restart-stable stats.
- * Uses a fixed-seed Random so numbers stay identical across H2 in-memory restarts.
+ * Uses a fixed-seed Random so numbers stay identical across H2 file-based restarts.
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -77,16 +78,28 @@ public class DataInitializer implements CommandLineRunner {
                 }
                 int fastestBase = 25 + rand.nextInt(46); // 25..70
 
+                // Spread match dates over the past 90 days for calendar demo
+                // Use fixed seed so distribution is restart-stable
+                LocalDateTime now = LocalDateTime.now();
+
                 // Record wins (LOCAL, CLASSIC)
                 for (int w = 0; w < wins; w++) {
                     int turns = fastestBase + w * rand.nextInt(5); // fastestBase + w*rand(0..4)
-                    playerService.recordMatch(p.getUsername(), "LOCAL", "CLASSIC", true, turns, 1);
+                    int daysAgo = rand.nextInt(90); // 0..89 days ago
+                    int hour = 8 + rand.nextInt(14); // 8..21
+                    int minute = rand.nextInt(60);
+                    LocalDateTime playedAt = now.minusDays(daysAgo).withHour(hour).withMinute(minute).withSecond(0).withNano(0);
+                    playerService.recordMatchWithTimestamp(p.getUsername(), "LOCAL", "CLASSIC", true, turns, 1, playedAt);
                 }
 
                 // Record losses (VS_AI, POWERUP)
                 for (int l = 0; l < losses; l++) {
                     int turns = 55 + rand.nextInt(46); // 55..100
-                    playerService.recordMatch(p.getUsername(), "VS_AI", "POWERUP", false, turns, 2);
+                    int daysAgo = rand.nextInt(90); // 0..89 days ago
+                    int hour = 8 + rand.nextInt(14); // 8..21
+                    int minute = rand.nextInt(60);
+                    LocalDateTime playedAt = now.minusDays(daysAgo).withHour(hour).withMinute(minute).withSecond(0).withNano(0);
+                    playerService.recordMatchWithTimestamp(p.getUsername(), "VS_AI", "POWERUP", false, turns, 2, playedAt);
                 }
             }
         }

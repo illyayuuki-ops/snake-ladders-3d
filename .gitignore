@@ -3,6 +3,10 @@ target/
 backend/target/
 *.class
 
+# Database files
+data/
+backend/data/
+
 # Logs
 *.log
 

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Admin — Snakes & Ladders 3D</title>
+    <link rel="icon" type="image/png" href="/images/logo.png" />
+    <link rel="apple-touch-icon" href="/images/logo.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <style>
+        /* Admin-specific styles */
+        .admin-container {
+            min-height: 100vh;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .admin-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .admin-title {
+            font-weight: 800;
+            font-size: 28px;
+            letter-spacing: 0.5px;
+        }
+        .admin-subtitle {
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .section-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-brd);
+            backdrop-filter: blur(14px) saturate(140%);
+            -webkit-backdrop-filter: blur(14px) saturate(140%);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+        .section-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .date-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .date-picker-row label {
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        input[type="date"] {
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 14px;
+            border: 1px solid var(--glass-brd);
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            min-width: 180px;
+        }
+        input[type="date"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-primary {
+            color: #08122b;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 6px 16px rgba(110,168,254,0.35);
+        }
+        .btn-primary:hover { filter: brightness(1.08); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.4); box-shadow: none; }
+        .btn-secondary {
+            border: 1px solid var(--glass-brd);
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.16); }
+        .records-table-wrap {
+            overflow-x: auto;
+        }
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .records-table th,
+        .records-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .records-table th {
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            background: rgba(255,255,255,0.03);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .records-table tbody tr {
+            transition: background 0.15s;
+        }
+        .records-table tbody tr:hover {
+            background: rgba(110,168,254,0.08);
+        }
+        .records-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .result-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .result-badge.win {
+            background: rgba(52,211,153,0.18);
+            color: var(--ok);
+            border: 1px solid rgba(52,211,153,0.35);
+        }
+        .result-badge.loss {
+            background: rgba(248,113,113,0.18);
+            color: var(--bad);
+            border: 1px solid rgba(248,113,113,0.35);
+        }
+        .mode-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border: 1px solid var(--glass-brd);
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted);
+        }
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        .stats-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .stat-box {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-brd);
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-box .label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .stat-box .value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .stat-box .value.win { color: var(--ok); }
+        .stat-box .value.loss { color: var(--bad); }
+        .stat-box .value.accent { color: var(--accent); }
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(11,16,32,0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: var(--radius);
+        }
+        .loading-overlay.hidden { display: none; }
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--glass-brd);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .table-relative { position: relative; }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--glass);
+            border: 1px solid var(--glass-brd);
+            backdrop-filter: blur(14px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 13px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: var(--ok); }
+        .toast.error { border-color: var(--bad); }
+        @media (max-width: 768px) {
+            .admin-container { padding: 16px; }
+            .admin-title { font-size: 22px; }
+            .date-picker-row { flex-direction: column; align-items: stretch; }
+            input[type="date"] { width: 100%; }
+            .btn { width: 100%; }
+            .records-table { font-size: 12px; }
+            .records-table th, .records-table td { padding: 8px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Header -->
+        <header class="admin-header">
+            <div>
+                <div class="admin-title">Admin Dashboard</div>
+                <div class="admin-subtitle">Play History Calendar & Reports</div>
+            </div>
+            <a href="/" class="btn btn-secondary">← Back to Game</a>
+        </header>
+
+        <!-- Play Records Section -->
+        <section class="section-card">
+            <h2 class="section-title">📅 Play Records</h2>
+
+            <!-- Date Picker Controls -->
+            <div class="date-picker-row">
+                <label for="date-picker">Select Date</label>
+                <input type="date" id="date-picker" />
+                <button id="btn-load" class="btn btn-primary">Load Records</button>
+                <button id="btn-pdf" class="btn btn-primary" disabled>Export PDF</button>
+            </div>
+
+            <!-- Records Table -->
+            <div class="table-relative records-table-wrap">
+                <div id="loading" class="loading-overlay hidden"><div class="spinner"></div></div>
+                <table class="records-table" id="records-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Result</th>
+                            <th>Mode</th>
+                            <th>Variant</th>
+                            <th>Turns</th>
+                            <th>Placement</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-body">
+                        <!-- populated by JS -->
+                    </tbody>
+                </table>
+                <div id="empty-state" class="empty-state hidden">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p>No records found for this date.</p>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div id="stats-row" class="stats-row hidden">
+                <div class="stat-box">
+                    <div class="label">Total Matches</div>
+                    <div class="value accent" id="stat-total">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Wins</div>
+                    <div class="value win" id="stat-wins">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Losses</div>
+                    <div class="value loss" id="stat-losses">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Unique Players</div>
+                    <div class="value accent" id="stat-players">0</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ======================= ADMIN HISTORY LOGIC =======================
+        (function () {
+            const datePicker = document.getElementById('date-picker');
+            const btnLoad = document.getElementById('btn-load');
+            const btnPdf = document.getElementById('btn-pdf');
+            const tableBody = document.getElementById('records-body');
+            const emptyState = document.getElementById('empty-state');
+            const loadingOverlay = document.getElementById('loading');
+            const statsRow = document.getElementById('stats-row');
+            const statTotal = document.getElementById('stat-total');
+            const statWins = document.getElementById('stat-wins');
+            const statLosses = document.getElementById('stat-losses');
+            const statPlayers = document.getElementById('stat-players');
+            const toast = document.getElementById('toast');
+
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            datePicker.value = today;
+
+            // Load records on page load
+            loadRecords(today);
+
+            // Event listeners
+            btnLoad.addEventListener('click', () => loadRecords(datePicker.value));
+            btnPdf.addEventListener('click', () => exportPdf(datePicker.value));
+            datePicker.addEventListener('change', () => {
+                btnPdf.disabled = true;
+                statsRow.classList.add('hidden');
+            });
+
+            async function loadRecords(date) {
+                if (!date) return;
+
+                showLoading(true);
+                hideEmptyState();
+                clearTable();
+                statsRow.classList.add('hidden');
+                btnPdf.disabled = true;
+
+                try {
+                    const response = await fetch(`/api/history?date=${encodeURIComponent(date)}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const records = await response.json();
+                    renderRecords(records, date);
+                    showToast(`Loaded ${records.length} record(s) for ${date}`, 'success');
+                } catch (err) {
+                    console.error('Failed to load records:', err);
+                    showToast('Failed to load records: ' + err.message, 'error');
+                    showEmptyState();
+                } finally {
+                    showLoading(false);
+                }
+            }
+
+            function renderRecords(records, date) {
+                if (records.length === 0) {
+                    showEmptyState();
+                    return;
+                }
+
+                hideEmptyState();
+
+                let wins = 0, losses = 0;
+                const playerSet = new Set();
+
+                records.forEach((r, idx) => {
+                    const won = r.won === true;
+                    if (won) wins++; else losses++;
+                    playerSet.add(r.username);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${escapeHtml(r.username)}</td>
+                        <td><span class="result-badge ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span></td>
+                        <td><span class="mode-badge">${escapeHtml(r.mode)}</span></td>
+                        <td><span class="mode-badge">${escapeHtml(r.variant)}</span></td>
+                        <td style="text-align:center;">${r.turns}</td>
+                        <td style="text-align:center;">${r.placement}</td>
+                        <td style="text-align:center;">${formatTime(r.playedAt)}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+
+                // Update stats
+                statTotal.textContent = records.length;
+                statWins.textContent = wins;
+                statLosses.textContent = losses;
+                statPlayers.textContent = playerSet.size;
+                statsRow.classList.remove('hidden');
+                btnPdf.disabled = false;
+            }
+
+            function exportPdf(date) {
+                if (!date) return;
+                window.location.href = `/api/history/pdf?date=${encodeURIComponent(date)}`;
+                showToast('Downloading PDF...', 'success');
+            }
+
+            function formatTime(isoString) {
+                if (!isoString) return '—';
+                try {
+                    const dt = new Date(isoString);
+                    return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                } catch {
+                    return isoString;
+                }
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&')
+                    .replace(/</g, '<')
+                    .replace(/>/g, '>')
+                    .replace(/"/g, '"')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function clearTable() {
+                tableBody.innerHTML = '';
+            }
+
+            function showEmptyState() {
+                emptyState.classList.remove('hidden');
+            }
+
+            function hideEmptyState() {
+                emptyState.classList.add('hidden');
+            }
+
+            function showLoading(show) {
+                loadingOverlay.classList.toggle('hidden', !show);
+            }
+
+            function showToast(message, type = 'info') {
+                toast.textContent = message;
+                toast.className = 'toast show ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+        })();
+    </script>
+</body>
+</html>

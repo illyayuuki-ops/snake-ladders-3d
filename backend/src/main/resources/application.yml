@@ -4,9 +4,9 @@ spring:
   profiles:
     active: default
 
-  # ---- Default datasource: H2 in-memory (zero setup, persists for app lifetime) ----
+  # ---- Default datasource: H2 file-based (persists across restarts) ----
   datasource:
-    url: jdbc:h2:mem:snakesladders;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:file:../data/snakesladders;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password: ""

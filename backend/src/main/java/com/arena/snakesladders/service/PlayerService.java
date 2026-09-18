@@ -2,13 +2,16 @@ package com.arena.snakesladders.service;
 
 import com.arena.snakesladders.dto.CreatePlayerRequest;
 import com.arena.snakesladders.dto.UpdatePlayerRequest;
+import com.arena.snakesladders.model.GameHistory;
 import com.arena.snakesladders.model.Player;
+import com.arena.snakesladders.repository.GameHistoryRepository;
 import com.arena.snakesladders.repository.PlayerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityNotFoundException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -18,10 +21,12 @@ import java.util.stream.Collectors;
 public class PlayerService {
 
     private final PlayerRepository playerRepository;
+    private final GameHistoryRepository historyRepository;
 
     @Autowired
-    public PlayerService(PlayerRepository playerRepository) {
+    public PlayerService(PlayerRepository playerRepository, GameHistoryRepository historyRepository) {
         this.playerRepository = playerRepository;
+        this.historyRepository = historyRepository;
     }
 
     public List<Player> findAll() {
@@ -88,5 +93,19 @@ public class PlayerService {
     public void recordMatch(String username, String mode, String variant, boolean won, int turns, int placement) {
         Player p = createOrGet(username);
         playerRepository.incrementStats(p.getId(), won, turns);
+
+        // Persist detailed game history
+        GameHistory gh = new GameHistory(username, mode, variant, won, turns, placement, LocalDateTime.now());
+        historyRepository.save(gh);
+    }
+
+    /** Record a finished match result for a player with a specific playedAt timestamp (for seeding). */
+    public void recordMatchWithTimestamp(String username, String mode, String variant, boolean won, int turns, int placement, LocalDateTime playedAt) {
+        Player p = createOrGet(username);
+        playerRepository.incrementStats(p.getId(), won, turns);
+
+        // Persist detailed game history with custom timestamp
+        GameHistory gh = new GameHistory(username, mode, variant, won, turns, placement, playedAt);
+        historyRepository.save(gh);
     }
 }
