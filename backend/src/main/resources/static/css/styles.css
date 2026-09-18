@@ -62,6 +62,9 @@ button { font-family: inherit; cursor: pointer; }
     position: absolute; inset: 0;
     transform-style: preserve-3d;
     border-radius: 14px;
+    background-image: url('/assets/board.jpg');
+    background-size: cover;
+    background-position: center;
 }
 /* board slab thickness */
 #board::before {
@@ -119,14 +122,10 @@ button { font-family: inherit; cursor: pointer; }
     pointer-events: none;
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.45));
 }
-.ladder-g .rail { stroke: url(#ladderGrad); stroke-linecap: round; }
-.ladder-g .rung { stroke: #fcd34d; stroke-linecap: round; }
-.snake-shadow { fill: none; stroke: rgba(0,0,0,0.35); stroke-linecap: round; transform: translate(2px,5px); }
-.snake-body { fill: none; stroke: url(#snakeGrad); stroke-linecap: round; }
-.snake-head { fill: url(#snakeGrad); stroke: #7f1d1d; stroke-width: 2; }
-.eye { fill: #fff; }
-.pupil { fill: #111; }
-.tongue { stroke: #ef4444; stroke-linecap: round; fill: none; }
+.ladder-img-g image,
+.snake-img-g image {
+    /* Images are positioned via JS transform */
+}
 
 /* ---------- tokens / pawns ---------- */
 .token {
@@ -137,18 +136,8 @@ button { font-family: inherit; cursor: pointer; }
     display: flex; align-items: center; justify-content: center;
 }
 .token .pawn {
-    width: 78%; height: 78%;
-    border-radius: 50% 50% 45% 45%;
-    background: radial-gradient(circle at 35% 30%, #fff8, transparent 45%), var(--c, #ef4444);
-    box-shadow: 0 10px 16px rgba(0,0,0,0.5), inset 0 4px 8px rgba(255,255,255,0.4);
-    border: 2px solid rgba(255,255,255,0.65);
-    position: relative;
-}
-.token .pawn::before { /* head */
-    content: ""; position: absolute; top: -34%; left: 50%; transform: translateX(-50%);
-    width: 60%; height: 60%; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fff9, transparent 45%), var(--c, #ef4444);
-    border: 2px solid rgba(255,255,255,0.6);
+    width: 100%; height: 100%;
+    object-fit: contain;
 }
 .token .tag {
     position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);

@@ -137,12 +137,7 @@
             this.el.appendChild(svg);
         }
         _defs() {
-            return '<defs>' +
-                '<linearGradient id="snakeGrad" x1="0" y1="0" x2="1" y2="1">' +
-                '<stop offset="0" stop-color="#fb7185"/><stop offset="0.5" stop-color="#ef4444"/><stop offset="1" stop-color="#b91c1c"/></linearGradient>' +
-                '<linearGradient id="ladderGrad" x1="0" y1="0" x2="0" y2="1">' +
-                '<stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#d97706"/></linearGradient>' +
-                '</defs>';
+            return '<defs></defs>';
         }
         _svgEl(tag, attrs) {
             const e = document.createElementNS(SVGNS, tag);
@@ -159,34 +154,39 @@
 
         drawLadder(a, b) {
             const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-            const ux = dx / len, uy = dy / len, px = -uy, py = ux;
-            const off = this.tile * 0.17;
-            const g = this._svgEl("g", { "class": "ladder-g" });
-            g.appendChild(this._svgEl("line", { x1: a.x + px * off, y1: a.y + py * off, x2: b.x + px * off, y2: b.y + py * off, "class": "rail", "stroke-width": Math.max(4, this.tile * 0.09) }));
-            g.appendChild(this._svgEl("line", { x1: a.x - px * off, y1: a.y - py * off, x2: b.x - px * off, y2: b.y - py * off, "class": "rail", "stroke-width": Math.max(4, this.tile * 0.09) }));
-            const n = Math.max(3, Math.round(len / (this.tile * 0.42)));
-            for (let i = 1; i < n; i++) {
-                const t = i / n, cx = a.x + dx * t, cy = a.y + dy * t;
-                g.appendChild(this._svgEl("line", { x1: cx + px * off, y1: cy + py * off, x2: cx - px * off, y2: cy - py * off, "class": "rung", "stroke-width": Math.max(3, this.tile * 0.07) }));
-            }
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const w = this.tile * 0.34;
+            const g = this._svgEl("g", { "class": "ladder-img-g" });
+            const img = this._svgEl("image", {
+                href: "/assets/ladder.png",
+                x: a.x - w / 2,
+                y: a.y - len / 2,
+                width: w,
+                height: len,
+                transform: "rotate(" + angle + " " + a.x + " " + a.y + ")",
+                "transform-origin": a.x + " " + a.y,
+                preserveAspectRatio: "none"
+            });
+            g.appendChild(img);
             this.svg.appendChild(g);
         }
 
         drawSnake(a, b, idx) {
             const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-            const ux = dx / len, uy = dy / len, px = -uy, py = ux;
-            const curve = (idx % 2 ? 1 : -1) * len * 0.22;
-            const cx = (a.x + b.x) / 2 + px * curve, cy = (a.y + b.y) / 2 + py * curve;
-            const d = "M " + a.x + " " + a.y + " Q " + cx + " " + cy + " " + b.x + " " + b.y;
-            const g = this._svgEl("g", { "class": "snake-g" });
-            g.appendChild(this._svgEl("path", { d: d, "class": "snake-shadow", "stroke-width": this.tile * 0.32 }));
-            g.appendChild(this._svgEl("path", { d: d, "class": "snake-body", "stroke-width": this.tile * 0.26 }));
-            g.appendChild(this._svgEl("circle", { cx: a.x, cy: a.y, r: this.tile * 0.2, "class": "snake-head" }));
-            g.appendChild(this._svgEl("circle", { cx: a.x + px * this.tile * 0.09, cy: a.y + py * this.tile * 0.09, r: this.tile * 0.05, "class": "eye" }));
-            g.appendChild(this._svgEl("circle", { cx: a.x - px * this.tile * 0.09, cy: a.y - py * this.tile * 0.09, r: this.tile * 0.05, "class": "eye" }));
-            g.appendChild(this._svgEl("circle", { cx: a.x + px * this.tile * 0.09, cy: a.y + py * this.tile * 0.09, r: this.tile * 0.022, "class": "pupil" }));
-            g.appendChild(this._svgEl("circle", { cx: a.x - px * this.tile * 0.09, cy: a.y - py * this.tile * 0.09, r: this.tile * 0.022, "class": "pupil" }));
-            g.appendChild(this._svgEl("path", { d: "M " + a.x + " " + a.y + " l " + (ux * this.tile * 0.22) + " " + (uy * this.tile * 0.22), "class": "tongue", "stroke-width": Math.max(2, this.tile * 0.04) }));
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const w = this.tile * 0.42;
+            const g = this._svgEl("g", { "class": "snake-img-g" });
+            const img = this._svgEl("image", {
+                href: "/assets/snake.png",
+                x: a.x - w / 2,
+                y: a.y - len / 2,
+                width: w,
+                height: len,
+                transform: "rotate(" + angle + " " + a.x + " " + a.y + ")",
+                "transform-origin": a.x + " " + a.y,
+                preserveAspectRatio: "none"
+            });
+            g.appendChild(img);
             this.svg.appendChild(g);
         }
 
@@ -201,8 +201,10 @@
         _makeToken(name, color, index, total) {
             const el = document.createElement("div");
             el.className = "token";
-            el.style.setProperty("--c", color || "#ef4444");
-            const pawn = document.createElement("div"); pawn.className = "pawn";
+            const pawn = document.createElement("img");
+            pawn.className = "pawn";
+            pawn.src = "/assets/pawn-" + (index + 1) + ".png";
+            pawn.alt = name;
             const tag = document.createElement("div"); tag.className = "tag"; tag.textContent = name;
             el.appendChild(pawn); el.appendChild(tag);
             this.el.appendChild(el);
