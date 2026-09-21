@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bodyGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#bbf7d0"/>
+      <stop offset="50%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+    <linearGradient id="hairGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#14532d"/>
+      <stop offset="100%" style="stop-color:#052e16"/>
+    </linearGradient>
+    <linearGradient id="outfitGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#bbf7d0"/>
+      <stop offset="100%" style="stop-color:#22c55e"/>
+    </linearGradient>
+    <filter id="shadow3" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#16a34a" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  
+  <!-- Shadow -->
+  <ellipse cx="128" cy="235" rx="55" ry="8" fill="#000" opacity="0.25"/>
+  
+  <!-- Body/Outfit -->
+  <g filter="url(#shadow3)">
+    <!-- Legs -->
+    <path d="M95 185 Q95 210 105 225 Q110 235 115 230 L115 230" fill="url(#outfitGrad3)" stroke="#16a34a" stroke-width="1.5"/>
+    <path d="M161 185 Q161 210 151 225 Q146 235 141 230 L141 230" fill="url(#outfitGrad3)" stroke="#16a34a" stroke-width="1.5"/>
+    
+    <!-- Torso -->
+    <path d="M85 125 Q75 135 78 165 L178 165 Q181 135 171 125 Z" fill="url(#outfitGrad3)" stroke="#16a34a" stroke-width="1.5"/>
+    
+    <!-- Belt -->
+    <rect x="88" y="155" width="80" height="8" rx="2" fill="#14532d"/>
+    
+    <!-- Arms -->
+    <path d="M78 135 Q65 145 60 165 Q58 175 65 180" stroke="url(#bodyGrad3)" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path d="M178 135 Q191 145 196 165 Q198 175 191 180" stroke="url(#bodyGrad3)" stroke-width="18" fill="none" stroke-linecap="round"/>
+    
+    <!-- Hands -->
+    <circle cx="60" cy="180" r="12" fill="url(#bodyGrad3)" stroke="#16a34a" stroke-width="1"/>
+    <circle cx="196" cy="180" r="12" fill="url(#bodyGrad3)" stroke="#16a34a" stroke-width="1"/>
+  </g>
+  
+  <!-- Head -->
+  <g filter="url(#shadow3)">
+    <!-- Face base -->
+    <ellipse cx="128" cy="100" rx="42" ry="48" fill="url(#bodyGrad3)" stroke="#16a34a" stroke-width="1.5"/>
+    
+    <!-- Hair back (short, messy) -->
+    <path d="M86 70 Q70 80 70 110 Q70 130 86 140 L86 140 Q86 120 100 115 Q128 110 156 115 Q170 120 170 140 L170 140 Q186 130 186 110 Q186 80 170 70 Z" fill="url(#hairGrad3)"/>
+    
+    <!-- Short messy bangs -->
+    <path d="M90 60 Q100 45 110 60 Q105 55 100 65 Z" fill="url(#hairGrad3)"/>
+    <path d="M110 58 Q120 40 130 58 Q125 52 120 62 Z" fill="url(#hairGrad3)"/>
+    <path d="M130 58 Q140 40 150 58 Q145 52 140 62 Z" fill="url(#hairGrad3)"/>
+    <path d="M150 60 Q160 45 170 60 Q165 55 160 65 Z" fill="url(#hairGrad3)"/>
+    
+    <!-- Ears (pointed/elf-like) -->
+    <path d="M86 95 Q72 90 78 75 Q88 85 86 95" fill="url(#bodyGrad3)" stroke="#16a34a" stroke-width="1"/>
+    <path d="M170 95 Q184 90 178 75 Q168 85 170 95" fill="url(#bodyGrad3)" stroke="#16a34a" stroke-width="1"/>
+    
+    <!-- Eyes (green theme) -->
+    <!-- Left eye -->
+    <ellipse cx="110" cy="92" rx="14" ry="16" fill="#fff" stroke="#16a34a" stroke-width="1"/>
+    <ellipse cx="112" cy="94" rx="7" ry="8" fill="#14532d"/>
+    <ellipse cx="114" cy="92" rx="3" ry="3" fill="#fff"/>
+    <ellipse cx="109" cy="96" rx="1.5" ry="1.5" fill="#fff" opacity="0.7"/>
+    
+    <!-- Right eye -->
+    <ellipse cx="146" cy="92" rx="14" ry="16" fill="#fff" stroke="#16a34a" stroke-width="1"/>
+    <ellipse cx="148" cy="94" rx="7" ry="8" fill="#14532d"/>
+    <ellipse cx="150" cy="92" rx="3" ry="3" fill="#fff"/>
+    <ellipse cx="145" cy="96" rx="1.5" ry="1.5" fill="#fff" opacity="0.7"/>
+    
+    <!-- Eyebrows -->
+    <path d="M100 78 Q110 72 120 78" stroke="#14532d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M136 78 Q146 72 156 78" stroke="#14532d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    
+    <!-- Blush -->
+    <ellipse cx="96" cy="105" rx="8" ry="5" fill="#bbf7d0" opacity="0.6"/>
+    <ellipse cx="160" cy="105" rx="8" ry="5" fill="#bbf7d0" opacity="0.6"/>
+    
+    <!-- Mouth (cat-like) -->
+    <path d="M120 115 Q128 112 136 115" stroke="#14532d" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M128 115 L128 120" stroke="#14532d" stroke-width="1.5" stroke-linecap="round"/>
+    
+    <!-- Hair side strands -->
+    <path d="M86 90 Q70 100 75 125" stroke="url(#hairGrad3)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M170 90 Q186 100 181 125" stroke="url(#hairGrad3)" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Outfit details -->
+  <g filter="url(#shadow3)">
+    <!-- Collar -->
+    <path d="M105 125 Q128 118 151 125 Q140 130 128 135 Q116 130 105 125" fill="#fff" opacity="0.9" stroke="#bbf7d0" stroke-width="1"/>
+    
+    <!-- Chest emblem (leaf) -->
+    <path d="M128 130 Q135 135 142 142 Q138 148 128 154 Q118 148 114 142 Q121 135 128 130 Z" fill="#14532d" stroke="#bbf7d0" stroke-width="1.5"/>
+    <path d="M128 130 L128 154" stroke="#14532d" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>
