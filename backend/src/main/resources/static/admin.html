@@ -249,6 +249,42 @@
         .toast.show { transform: translateY(0); opacity: 1; }
         .toast.success { border-color: var(--ok); }
         .toast.error { border-color: var(--bad); }
+        /* Login overlay */
+        .login-overlay {
+            position: fixed; inset: 0;
+            background: rgba(11,16,32,0.95);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        .login-overlay.hidden { display: none; }
+        .login-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-brd);
+            backdrop-filter: blur(14px) saturate(140%);
+            -webkit-backdrop-filter: blur(14px) saturate(140%);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 32px 40px;
+            width: 100%; max-width: 380px;
+            text-align: center;
+        }
+        .login-card h2 { font-weight: 800; font-size: 22px; margin: 0 0 8px; }
+        .login-card p { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+        .login-form { display: flex; flex-direction: column; gap: 16px; }
+        .login-form input[type="password"] {
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            border: 1px solid var(--glass-brd);
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .login-form input[type="password"]:focus { outline: none; border-color: var(--accent); }
+        .login-form .btn { width: 100%; }
+        .login-error { color: var(--bad); font-size: 12px; min-height: 16px; }
         @media (max-width: 768px) {
             .admin-container { padding: 16px; }
             .admin-title { font-size: 22px; }
@@ -257,18 +293,35 @@
             .btn { width: 100%; }
             .records-table { font-size: 12px; }
             .records-table th, .records-table td { padding: 8px 6px; }
+            .login-card { padding: 24px; margin: 16px; }
         }
     </style>
 </head>
 <body>
-    <div class="admin-container">
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <h2>🔐 Admin Login</h2>
+            <p>Enter password to access the admin dashboard</p>
+            <form id="login-form" class="login-form">
+                <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+                <button type="submit" class="btn btn-primary">Login</button>
+                <div id="login-error" class="login-error"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-container" class="admin-container" style="display: none;">
         <!-- Header -->
         <header class="admin-header">
             <div>
                 <div class="admin-title">Admin Dashboard</div>
                 <div class="admin-subtitle">Play History Calendar & Reports</div>
             </div>
-            <a href="/" class="btn btn-secondary">← Back to Game</a>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <a href="/" class="btn btn-secondary">← Back to Game</a>
+                <button id="btn-logout" class="btn btn-secondary">Logout</button>
+            </div>
         </header>
 
         <!-- Play Records Section -->
@@ -338,6 +391,14 @@
     <script>
         // ======================= ADMIN HISTORY LOGIC =======================
         (function () {
+            // DOM elements
+            const loginOverlay = document.getElementById('login-overlay');
+            const loginForm = document.getElementById('login-form');
+            const loginPassword = document.getElementById('login-password');
+            const loginError = document.getElementById('login-error');
+            const adminContainer = document.getElementById('admin-container');
+            const btnLogout = document.getElementById('btn-logout');
+
             const datePicker = document.getElementById('date-picker');
             const btnLoad = document.getElementById('btn-load');
             const btnPdf = document.getElementById('btn-pdf');
@@ -355,10 +416,66 @@
             const today = new Date().toISOString().split('T')[0];
             datePicker.value = today;
 
-            // Load records on page load
-            loadRecords(today);
+            // Handle login form submit
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const password = loginPassword.value;
+                if (!password) {
+                    loginError.textContent = 'Please enter a password';
+                    return;
+                }
+                loginError.textContent = '';
+                btnLoad.disabled = true;
+                btnLoad.textContent = 'Logging in...';
 
-            // Event listeners
+                try {
+                    const response = await fetch('/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include', // important for session cookie
+                        body: JSON.stringify({ password })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        // Hide login, show dashboard
+                        loginOverlay.classList.add('hidden');
+                        adminContainer.style.display = 'flex';
+                        // Load records for today
+                        loadRecords(today);
+                    } else {
+                        loginError.textContent = data.message || 'Invalid password';
+                        loginPassword.value = '';
+                        loginPassword.focus();
+                    }
+                } catch (err) {
+                    console.error('Login failed:', err);
+                    loginError.textContent = 'Login failed: ' + err.message;
+                } finally {
+                    btnLoad.disabled = false;
+                    btnLoad.textContent = 'Load Records';
+                }
+            });
+
+            // Handle logout
+            btnLogout.addEventListener('click', async () => {
+                try {
+                    await fetch('/api/admin/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                } catch (e) { /* ignore */ }
+                // Hide dashboard, show login
+                adminContainer.style.display = 'none';
+                loginOverlay.classList.remove('hidden');
+                loginPassword.value = '';
+                loginPassword.focus();
+                // Clear table
+                clearTable();
+                statsRow.classList.add('hidden');
+                btnPdf.disabled = true;
+            });
+
+            // Event listeners for dashboard
             btnLoad.addEventListener('click', () => loadRecords(datePicker.value));
             btnPdf.addEventListener('click', () => exportPdf(datePicker.value));
             datePicker.addEventListener('change', () => {
@@ -376,15 +493,26 @@
                 btnPdf.disabled = true;
 
                 try {
-                    const response = await fetch(`/api/history?date=${encodeURIComponent(date)}`);
+                    const response = await fetch(`/api/history?date=${encodeURIComponent(date)}`, {
+                        credentials: 'include'
+                    });
+                    if (response.status === 401) {
+                        // Session expired - redirect to login
+                        adminContainer.style.display = 'none';
+                        loginOverlay.classList.remove('hidden');
+                        loginError.textContent = 'Session expired. Please login again.';
+                        throw new Error('Unauthorized');
+                    }
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const records = await response.json();
                     renderRecords(records, date);
                     showToast(`Loaded ${records.length} record(s) for ${date}`, 'success');
                 } catch (err) {
                     console.error('Failed to load records:', err);
-                    showToast('Failed to load records: ' + err.message, 'error');
-                    showEmptyState();
+                    if (err.message !== 'Unauthorized') {
+                        showToast('Failed to load records: ' + err.message, 'error');
+                        showEmptyState();
+                    }
                 } finally {
                     showLoading(false);
                 }
@@ -430,6 +558,7 @@
 
             function exportPdf(date) {
                 if (!date) return;
+                // Use window.location.href with credentials for PDF download
                 window.location.href = `/api/history/pdf?date=${encodeURIComponent(date)}`;
                 showToast('Downloading PDF...', 'success');
             }

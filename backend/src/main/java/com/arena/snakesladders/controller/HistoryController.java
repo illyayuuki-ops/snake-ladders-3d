@@ -3,7 +3,10 @@ package com.arena.snakesladders.controller;
 import com.arena.snakesladders.model.GameHistory;
 import com.arena.snakesladders.repository.GameHistoryRepository;
 import com.arena.snakesladders.service.ReportService;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -31,18 +35,33 @@ public class HistoryController {
     }
 
     /**
+     * Check if the current request is authenticated as admin.
+     */
+    private boolean isAdminAuthenticated(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        return session != null && Boolean.TRUE.equals(session.getAttribute("adminAuthed"));
+    }
+
+    /**
      * Get game history for a specific date or date range.
      *
      * @param date single date in YYYY-MM-DD format (optional if from/to provided)
      * @param from start date in YYYY-MM-DD format (inclusive)
      * @param to end date in YYYY-MM-DD format (inclusive)
+     * @param request HTTP request (for session check)
      * @return list of game history records
      */
     @GetMapping
-    public List<HistoryRecord> getHistory(
+    public ResponseEntity<?> getHistory(
             @RequestParam(required = false) String date,
             @RequestParam(required = false) String from,
-            @RequestParam(required = false) String to) {
+            @RequestParam(required = false) String to,
+            HttpServletRequest request) {
+
+        if (!isAdminAuthenticated(request)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Unauthorized - admin login required"));
+        }
 
         LocalDateTime start;
         LocalDateTime end;
@@ -64,7 +83,7 @@ public class HistoryController {
         }
 
         List<GameHistory> records = historyRepository.findByPlayedAtBetweenOrderByPlayedAtDesc(start, end);
-        return records.stream().map(HistoryRecord::from).collect(Collectors.toList());
+        return ResponseEntity.ok(records.stream().map(HistoryRecord::from).collect(Collectors.toList()));
     }
 
     /**
@@ -73,13 +92,20 @@ public class HistoryController {
      * @param date single date in YYYY-MM-DD format (optional if from/to provided)
      * @param from start date in YYYY-MM-DD format (inclusive)
      * @param to end date in YYYY-MM-DD format (inclusive)
+     * @param request HTTP request (for session check)
      * @return PDF file as byte stream
      */
-    @GetMapping(value = "/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> exportPdf(
+    @GetMapping("/pdf")
+    public ResponseEntity<?> exportPdf(
             @RequestParam(required = false) String date,
             @RequestParam(required = false) String from,
-            @RequestParam(required = false) String to) {
+            @RequestParam(required = false) String to,
+            HttpServletRequest request) {
+
+        if (!isAdminAuthenticated(request)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Unauthorized - admin login required"));
+        }
 
         LocalDateTime start;
         LocalDateTime end;

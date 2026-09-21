@@ -44,6 +44,10 @@ management:
     health:
       show-details: never
 
+# ---- Admin authentication ----
+admin:
+  password: ${ADMIN_PASSWORD:admin123}
+
 ---
 # ---- Production datasource: PostgreSQL ----
 # Env vars (optional): SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
