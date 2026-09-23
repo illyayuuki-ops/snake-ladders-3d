@@ -21,12 +21,14 @@
         busy: false, lastState: null,
         built: false, builtCode: null, builtSize: 0,
         soundOn: true, audio: null,
-        config: { variant: "CLASSIC", localCount: 2, localNames: [] },
+        config: { variant: "CLASSIC", localCount: 2, localNames: [], mode: "LOCAL" },
         engine: null, stateQueue: null,
         // riddle state
         riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null },
         // background music state
-        bgMusic: { node: null, gain: null, playing: false }
+        bgMusic: { node: null, gain: null, playing: false },
+        // online mode state
+        ws: null, roomCode: null, onlinePlayers: [], isHost: false
     };
     let stateQueue = null;
 
@@ -334,6 +336,9 @@
         if (st.boardChanged) G.board.respawnBoard(st);
         G.board.setCurrent(st.currentPlayerName);
         renderState(st);
+        if (G.isHost && G.ws) {
+            broadcastState(st);
+        }
         G.busy = false;
         if (stateQueue) {
             const next = stateQueue;
@@ -405,7 +410,7 @@
     /* ---------------- rendering ---------------- */
     function renderState(st) {
         $("mode-label").textContent = st.mode + (st.difficulty ? " · " + st.difficulty : "");
-        $("room-code").textContent = st.roomCode || "—";
+        $("room-code").textContent = G.roomCode || st.roomCode || "—";
         $("turn-count").textContent = st.turnCount;
         $("variant-label").textContent = st.variant;
         G.dice.snap(st.dice || 1);
@@ -546,6 +551,14 @@
         ensureAudio();
         const cfg = G.config;
         const selected = Array.from(document.querySelectorAll(".player-chip.selected")).map(el => el.dataset.name);
+
+        const mode = G.config.mode || "LOCAL";
+        if (mode === "ONLINE") {
+            if (selected.length < 1) { toast("Select at least 1 player"); return; }
+            await startOnlineGame(cfg, selected);
+            return;
+        }
+
         if (selected.length < 2) { toast("Select at least 2 players"); return; }
         if (G.soundOn) startBgMusic();
         for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
@@ -558,6 +571,153 @@
         $("setup-modal").classList.add("hidden");
         applyState(st, false);
         scheduleNext(st);
+    }
+
+    /* ---------------- online mode ---------------- */
+    async function startOnlineGame(cfg, selected) {
+        const roomInput = $("input-room");
+        const roomCode = roomInput ? roomInput.value.trim().toUpperCase() : "";
+        if (roomCode && /^\d{6}$/.test(roomCode)) {
+            await joinOnlineRoom(roomCode, selected);
+        } else {
+            await createOnlineRoom(selected);
+        }
+    }
+
+    function connectWs(roomCode) {
+        try {
+            if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
+                const socket = new SockJS('/ws');
+                const stomp = Stomp.over(socket);
+                stomp.connect({}, function () {
+                    stomp.subscribe('/topic/room.' + roomCode, function (msg) {
+                        try {
+                            const data = JSON.parse(msg.body);
+                            if (data.type === 'state' && !G.isHost) {
+                                applyState(data.state, false);
+                            }
+                        } catch (e) {}
+                    });
+                    G.ws = stomp;
+                });
+            } else {
+                G.ws = null;
+            }
+        } catch (e) {
+            G.ws = null;
+        }
+    }
+
+    function broadcastState(st) {
+        if (G.ws && G.isHost && G.roomCode && G.ws.connected) {
+            try {
+                G.ws.send('/app/room.' + G.roomCode + '.state', JSON.stringify({
+                    type: 'state',
+                    state: st
+                }));
+            } catch (e) {}
+        }
+    }
+
+    async function createOnlineRoom(selected) {
+        G.myName = selected[0];
+        try {
+            const resp = await G.api.createRoom(G.myName, "ONLINE", G.config.variant);
+            G.roomCode = resp.roomCode;
+        } catch (e) {
+            G.roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+        }
+        G.mode = "ONLINE"; G.variant = G.config.variant; G.built = false;
+        G.isHost = true;
+        G.code = G.roomCode;
+        const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
+        G.engine = new LocalEngine();
+        const st = G.engine.create({ mode: "ONLINE", variant: G.config.variant, difficulty: "EASY", players });
+        st.roomCode = G.roomCode;
+        st.roomCode = G.roomCode;
+        $("setup-modal").classList.add("hidden");
+        showQrPanel(G.roomCode);
+        toast("Room " + G.roomCode + " - share the code!");
+        applyState(st, false);
+        $("mode-label").textContent = "Online · Room " + G.roomCode;
+        connectWs(G.roomCode);
+        scheduleNext(st);
+    }
+
+    async function joinOnlineRoom(roomCode, selected) {
+        G.myName = selected[0];
+        try {
+            await G.api.joinRoom(roomCode, G.myName);
+        } catch (e) {
+            toast("Could not join room: " + e.message);
+            return;
+        }
+        G.roomCode = roomCode;
+        G.mode = "ONLINE"; G.variant = G.config.variant; G.built = false;
+        G.isHost = false;
+        G.code = roomCode;
+        const players = selected.map((n, i) => ({ name: n, ai: i > 0, color: PALETTE[i % PALETTE.length] }));
+        G.engine = new LocalEngine();
+        const st = G.engine.create({ mode: "ONLINE", variant: G.config.variant, difficulty: "EASY", players });
+        st.roomCode = roomCode;
+        st.roomCode = roomCode;
+        $("setup-modal").classList.add("hidden");
+        applyState(st, false);
+        $("mode-label").textContent = "Online · Room " + roomCode;
+        connectWs(G.roomCode);
+        toast("Joined room " + roomCode);
+        scheduleNext(st);
+    }
+
+    function showQrPanel(roomCode) {
+        const overlay = $("qr-overlay");
+        const qrDiv = $("qr-code");
+        const codeDiv = $("qr-room-code");
+        if (!overlay || !qrDiv) return;
+        codeDiv.textContent = roomCode;
+        qrDiv.innerHTML = "";
+        const hostInput = $("input-host");
+        const savedHost = localStorage.getItem("sl3d_host") || window.location.host;
+        hostInput.value = savedHost;
+        hostInput.onchange = function () {
+            localStorage.setItem("sl3d_host", hostInput.value);
+            updateQrCode(roomCode, hostInput.value);
+        };
+        updateQrCode(roomCode, hostInput.value);
+        overlay.classList.remove("hidden");
+    }
+
+    function updateQrCode(roomCode, host) {
+        const qrDiv = $("qr-code");
+        if (!qrDiv) return;
+        qrDiv.innerHTML = "";
+        const url = location.protocol + "//" + host + "/?room=" + roomCode;
+        if (typeof QRCode !== "undefined") {
+            try {
+                QRCode.toCanvas(qrDiv, url, { width: 200, margin: 2 }, function () {});
+            } catch (e) {
+                qrDiv.innerHTML = '<div class="hint" style="color:var(--bad);">QR generation failed</div>';
+            }
+        } else {
+            qrDiv.innerHTML = '<span class="hint">QR: ' + url + '</span>';
+        }
+    }
+
+    function updateModeDesc() {
+        const desc = $("mode-desc");
+        if (!desc) return;
+        if (G.config.mode === "ONLINE") {
+            desc.textContent = "Play online with friends. Connect via room code or QR.";
+        } else {
+            desc.textContent = "Local multiplayer on one device.";
+        }
+    }
+
+    function updateRoomFieldVisibility() {
+        const field = $("room-field");
+        if (!field) return;
+        if (G.config.mode === "ONLINE") field.classList.remove("hidden");
+        else field.classList.add("hidden");
     }
 
     /* ---------------- setup modal UI ---------------- */
@@ -575,6 +735,21 @@
         };
         seg("seg-variant", "variant");
         if (desc) desc.textContent = VARIANT_DESCS[G.config.variant] || "";
+
+        const modeBtns = $("seg-mode");
+        if (modeBtns) {
+            modeBtns.querySelectorAll("button").forEach(b => {
+                b.onclick = () => {
+                    modeBtns.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+                    b.classList.add("active");
+                    G.config.mode = b.dataset.mode;
+                    updateModeDesc();
+                    updateRoomFieldVisibility();
+                };
+            });
+            updateModeDesc();
+            updateRoomFieldVisibility();
+        }
 
         const chips = $("db-players");
         const nameInput = $("input-new-player");
@@ -728,6 +903,21 @@
         $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();
 
+        if ($("btn-join-room")) {
+            $("btn-join-room").onclick = () => {
+                const code = $("input-room").value.trim().toUpperCase();
+                if (!/^\d{6}$/.test(code)) {
+                    $("setup-error").textContent = "Enter a valid 6-digit room code";
+                    return;
+                }
+                $("setup-error").textContent = "";
+                startGame();
+            };
+        }
+        if ($("btn-close-qr")) {
+            $("btn-close-qr").onclick = () => { $("qr-overlay").classList.add("hidden"); };
+        }
+
         $("leaderboard-panel").querySelectorAll(".lb-tabs button").forEach(b => {
             b.onclick = () => {
                 $("leaderboard-panel").querySelectorAll(".lb-tabs button").forEach(x => x.classList.remove("active"));
@@ -795,5 +985,22 @@
         loadLeaderboard("winrate");
         $("btn-roll").onclick = () => doRoll(G.lastState ? G.lastState.currentPlayerName : null);
         G.board.setCamera(58, 0, 1);
+
+        // Deep-link join: ?room=CODE
+        const params = new URLSearchParams(location.search);
+        const deepRoom = params.get("room");
+        if (deepRoom && /^\d{6}$/.test(deepRoom)) {
+            const modeBtns = $("seg-mode");
+            if (modeBtns) {
+                modeBtns.querySelectorAll("button").forEach(b => {
+                    b.classList.remove("active");
+                    if (b.dataset.mode === "ONLINE") b.classList.add("active");
+                });
+            }
+            G.config.mode = "ONLINE";
+            updateModeDesc();
+            updateRoomFieldVisibility();
+            if ($("input-room")) $("input-room").value = deepRoom;
+        }
     });
 })();

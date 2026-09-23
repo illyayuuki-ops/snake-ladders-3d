@@ -1,5 +1,5 @@
 /* ============================================================
-   api.js — minimal REST client for local-only mode
+   api.js — REST client for local + online multiplayer mode
    ============================================================ */
 (function (global) {
     "use strict";
@@ -40,6 +40,14 @@
         leaderboard(by, limit, me) { return this.get("/leaderboard?by=" + (by || "winrate") + "&limit=" + (limit || 10) + (me ? "&me=" + enc(me) : "")); }
         riddle() { return this.get("/riddle"); }
         searchPlayers(q, limit) { return this.get("/players/search?q=" + enc(q || "") + "&limit=" + (limit || 20)); }
+
+        /* ---------------- online room methods ---------------- */
+        createRoom(username, mode, variant) {
+            return this.post("/rooms", { username, mode, variant });
+        }
+        joinRoom(code, username) {
+            return this.post("/rooms/join", { code: code.toUpperCase(), username });
+        }
     }
 
     global.Api = Api;

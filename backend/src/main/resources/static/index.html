@@ -6,11 +6,17 @@
     <title>3D Snakes & Ladders — Arena Edition</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/images/logo.png" />
-    <link rel="apple-touch-icon" href="/images/logo.png" />
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0b1020" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Snakes & Ladders 3D" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <!-- Tailwind (progressive enhancement for utility styling in real browsers) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/styles.css" />
-</head>
+    </head>
 <body>
     <!-- ======================= 3D SCENE ======================= -->
     <div id="scene">
@@ -91,7 +97,15 @@
     <!-- ======================= SETUP MODAL ======================= -->
     <div id="setup-modal" class="overlay">
         <div class="setup-card glass">
-            <h2>Local Game</h2>
+            <h2 id="setup-title">Local Game</h2>
+            <div class="field">
+                <label>Game Mode</label>
+                <div class="seg" id="seg-mode">
+                    <button data-mode="LOCAL" class="active">Local</button>
+                    <button data-mode="ONLINE">Online</button>
+                </div>
+                <p id="mode-desc" class="hint">Local multiplayer on one device.</p>
+            </div>
             <div class="field">
                 <label>Board Variant</label>
                 <div class="seg" id="seg-variant">
@@ -101,6 +115,14 @@
                     <button data-variant="SPEED">Speed</button>
                 </div>
                 <p id="variant-desc" class="hint">Classic board with standard snakes and ladders.</p>
+            </div>
+            <div id="room-field" class="field hidden">
+                <label>Room Code</label>
+                <div class="room-row">
+                    <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="off" />
+                    <button id="btn-join-room" class="primary">Join</button>
+                </div>
+                <p class="hint">Enter a room code to join. Leave empty to create a new room.</p>
             </div>
             <div class="field">
                 <label>Players</label>
@@ -115,6 +137,22 @@
             </div>
             <div id="setup-error" class="setup-error"></div>
             <button id="btn-start" class="primary big">Start Game</button>
+        </div>
+    </div>
+
+    <!-- ======================= QR CODE PANEL ======================= -->
+    <div id="qr-overlay" class="overlay hidden">
+        <div class="qr-card glass">
+            <h2>📱 Share This Room</h2>
+            <p class="hint">Others can join by scanning the QR code or entering the code manually.</p>
+            <div id="qr-code" class="qr-code"></div>
+            <div id="qr-room-code" class="room-code-display">—</div>
+            <div class="field">
+                <label>Host Address</label>
+                <input id="input-host" type="text" placeholder="localhost:8080" autocomplete="off" />
+                <p class="hint">Enter your computer's IP or hostname so phones can connect.</p>
+            </div>
+            <button id="btn-close-qr" class="secondary">Close</button>
         </div>
     </div>
 
@@ -147,6 +185,15 @@
     <script src="/js/board3d.js"></script>
     <script src="/js/dice.js"></script>
     <script src="/js/engine.js"></script>
+    <script src="/vendor/sockjs.min.js"></script>
+    <script src="/vendor/stomp.min.js"></script>
+    <script src="/vendor/qrcode.min.js"></script>
     <script src="/js/game.js"></script>
+    <script>
+        // PWA: register service worker (only in secure context)
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            navigator.serviceWorker.register('/sw.js').catch(function () {});
+        }
+    </script>
 </body>
 </html>
