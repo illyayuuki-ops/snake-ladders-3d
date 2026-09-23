@@ -1,10 +1,13 @@
 package com.arena.snakesladders.config;
 
+import com.arena.snakesladders.model.GameHistory;
 import com.arena.snakesladders.model.Player;
+import com.arena.snakesladders.repository.GameHistoryRepository;
 import com.arena.snakesladders.service.PlayerService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Random;
@@ -13,18 +16,25 @@ import java.util.Set;
 /**
  * Seeds the full imported gamertag roster with randomized, restart-stable stats.
  * Uses a fixed-seed Random so numbers stay identical across H2 file-based restarts.
+ * Also seeds backdated game history for specific calendar dates (Sep 8, 10, 11, 14).
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
     private final PlayerService playerService;
+    private final GameHistoryRepository historyRepository;
 
-    public DataInitializer(PlayerService playerService) {
+    public DataInitializer(PlayerService playerService, GameHistoryRepository historyRepository) {
         this.playerService = playerService;
+        this.historyRepository = historyRepository;
     }
 
     @Override
     public void run(String... args) {
+        // Backdated seeding for specific calendar dates (Sep 8, 10, 11, 14)
+        // Runs first so it establishes baseline for those dates; idempotent via date-range existence check
+        seedBackdatedHistory();
+
         // Full imported roster (~135 gamertags) - duplicates removed
         String[] names = {
             "RedLycoris", "ChisatoVibes", "TakinaAim", "DA_Friends", "LycoRecoFan",
@@ -57,8 +67,8 @@ public class DataInitializer implements CommandLineRunner {
             "LethalStalker"
         };
 
-        // Only seed if database is empty
-        if (playerService.findAll().isEmpty()) {
+        // Only seed main roster if the roster players don't exist yet (backdated seeding may have created demo players)
+        if (!playerService.exists("RedLycoris")) {
             Random rand = new Random(42); // Fixed seed for restart-stable stats
             Set<String> seen = new HashSet<>(); // Defensive deduplication
 
@@ -100,7 +110,52 @@ public class DataInitializer implements CommandLineRunner {
                     int minute = rand.nextInt(60);
                     LocalDateTime playedAt = now.minusDays(daysAgo).withHour(hour).withMinute(minute).withSecond(0).withNano(0);
                     playerService.recordMatchWithTimestamp(p.getUsername(), "VS_AI", "POWERUP", false, turns, 2, playedAt);
+                    }
                 }
+            }
+        }
+
+    /**
+     * Seeds a random number of game history records for September 8, 10, 11, and 14
+     * of the current year. Idempotent: skips dates that already have history records.
+     */
+    private void seedBackdatedHistory() {
+        int year = LocalDate.now().getYear();
+        int[] targetDays = {8, 10, 11, 14};
+        String[] demoPlayers = {"Alice", "Bob", "Carol", "Dave", "Eve"};
+        String[] modes = {"LOCAL", "VS_AI", "ONLINE"};
+        String[] variants = {"CLASSIC", "POWERUP", "TIME_ATTACK"};
+
+        Random rand = new Random(); // True randomness for varied counts per date
+
+        for (int day : targetDays) {
+            LocalDate targetDate = LocalDate.of(year, 9, day);
+            LocalDateTime startOfDay = targetDate.atStartOfDay();
+            LocalDateTime endOfDay = targetDate.atTime(23, 59, 59, 999_999_999);
+
+            // Check if history already exists for this date
+            long existingCount = historyRepository.findByPlayedAtBetweenOrderByPlayedAtDesc(startOfDay, endOfDay).size();
+            if (existingCount > 0) {
+                continue; // Already seeded for this date
+            }
+
+            // Random number of games for this date: 1 to 10
+            int gameCount = 1 + rand.nextInt(10);
+
+            for (int i = 0; i < gameCount; i++) {
+                String username = demoPlayers[rand.nextInt(demoPlayers.length)];
+                String mode = modes[rand.nextInt(modes.length)];
+                String variant = variants[rand.nextInt(variants.length)];
+                boolean won = rand.nextBoolean();
+                int turns = 10 + rand.nextInt(91); // 10..100
+                int placement = won ? 1 : (2 + rand.nextInt(3)); // 1 if won, 2-4 if lost
+
+                // Varied time during the day (8:00 to 22:00)
+                int hour = 8 + rand.nextInt(15);
+                int minute = rand.nextInt(60);
+                LocalDateTime playedAt = targetDate.atTime(hour, minute);
+
+                playerService.recordMatchWithTimestamp(username, mode, variant, won, turns, placement, playedAt);
             }
         }
     }
