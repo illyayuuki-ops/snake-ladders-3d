@@ -338,11 +338,9 @@
         if (st.boardChanged) G.board.respawnBoard(st);
         G.board.setCurrent(st.currentPlayerName);
         renderState(st);
-        // LOCAL/VS_AI: the host still broadcasts to any online watchers (legacy path).
-        // ONLINE: the server is the single source of truth and already broadcasts
-        // authoritative STATE messages to every subscriber — do NOT re-broadcast here.
-        if (G.isHost && G.ws && !G.online) {
-            broadcastState(st);
+        // Host broadcasts state to all clients in ONLINE mode (and LOCAL/VS_AI for watchers)
+        if (G.isHost) {
+            G.api.sendRoom(G.code, "STATE", G.myName, st);
         }
         G.busy = false;
         if (stateQueue) {
@@ -393,14 +391,22 @@
     /* ---------------- actions ---------------- */
     function doRoll(player) {
         if (G.busy || !G.code) return;
-        // ONLINE mode: delegate to the server (authoritative). Never use a LocalEngine.
+        // ONLINE mode: host computes locally and broadcasts; joiners send ROLL action to host
         if (G.online) {
             setRollLabel("Rolling…", false);
             sound("roll");
             // player must be the current turn's player NAME (string), not an object
             const name = (typeof player === "string") ? player
                 : (G.lastState ? G.lastState.currentPlayerName : null);
-            G.api.sendRoom(G.code, "ROLL", name, null);
+            if (G.isHost && G.engine) {
+                // Host processes roll locally and broadcasts new state
+                const st = G.engine.roll(name);
+                G.lastState = st;
+                G.api.sendRoom(G.code, "STATE", G.myName, st);
+            } else {
+                // Joiner sends ROLL action to host
+                G.api.sendRoom(G.code, "ROLL", name, null);
+            }
             return;
         }
         setRollLabel("Rolling…", false);
@@ -486,10 +492,18 @@
         const cur = st.players.find(p => p.name === st.currentPlayerName);
         if (!cur) return;
         const target = currentLeader(st, cur);
-        // ONLINE mode: delegate to the server (authoritative). Never use a LocalEngine.
+        // ONLINE mode: host computes locally and broadcasts; joiners send USE_POWERUP action to host
         if (G.online) {
             setRollLabel("Using…", false);
-            G.api.sendRoom(G.code, "USE_POWERUP", cur.name, { type: type, target: target ? target.name : null });
+            if (G.isHost && G.engine) {
+                // Host processes power-up locally and broadcasts new state
+                const s = G.engine.usePowerUp(cur.name, type, target ? target.name : null);
+                G.lastState = s;
+                G.api.sendRoom(G.code, "STATE", G.myName, s);
+            } else {
+                // Joiner sends USE_POWERUP action to host
+                G.api.sendRoom(G.code, "USE_POWERUP", cur.name, { type: type, target: target ? target.name : null });
+            }
             return;
         }
         setRollLabel("Using…", false);
@@ -684,41 +698,6 @@
         }
     }
 
-    function connectWs(roomCode) {
-        try {
-            if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
-                const socket = new SockJS('/ws');
-                const stomp = Stomp.over(socket);
-                stomp.connect({}, function () {
-                    stomp.subscribe('/topic/room.' + roomCode, function (msg) {
-                        try {
-                            const data = JSON.parse(msg.body);
-                            if (data.type === 'state' && !G.isHost) {
-                                applyState(data.state, false);
-                            }
-                        } catch (e) {}
-                    });
-                    G.ws = stomp;
-                });
-            } else {
-                G.ws = null;
-            }
-        } catch (e) {
-            G.ws = null;
-        }
-    }
-
-    function broadcastState(st) {
-        if (G.ws && G.isHost && G.roomCode && G.ws.connected) {
-            try {
-                G.ws.send('/app/room.' + G.roomCode + '.state', JSON.stringify({
-                    type: 'state',
-                    state: st
-                }));
-            } catch (e) {}
-        }
-    }
-
     async function createOnlineRoom(selected) {
         G.myName = selected[0];
         try {
@@ -732,35 +711,30 @@
         G.code = G.roomCode;
         G.local = false;
         G.online = true;
-        // ONLINE is server-authoritative: do NOT create a LocalEngine here.
-        // The backend GameService owns the shared game state and broadcasts it.
+        // Host creates LocalEngine to compute authoritative state for the room.
+        const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
+        G.engine = new LocalEngine();
+        const initialState = G.engine.create({ mode: "ONLINE", variant: G.config.variant, difficulty: "EASY", players });
+        initialState.status = "WAITING"; // Room starts in WAITING until host clicks Start
+        G.lastState = initialState;
         $("setup-modal").classList.add("hidden");
         showQrPanel(G.roomCode);
         toast("Room " + G.roomCode + " - share the code!");
         $("mode-label").textContent = "Online · Room " + G.roomCode + " · Waiting to start";
         await G.api.connectWs();
         G.api.subscribeRoom(G.code, onWs);
-        // Ask the server for the current authoritative state (handles re-sync on reconnect)
-        G.api.syncRoom(G.code).then(st => {
-            if (st) {
-                G.lastState = st;
-                applyState(st, false);
-                scheduleNext(st);
-            }
-        }).catch(() => {
-            // No state yet (host hasn't started) — show an empty waiting state
-            $("mode-label").textContent = "Online · Room " + G.roomCode + " · Waiting to start";
-        });
+        // Apply initial waiting state locally
+        applyState(initialState, false);
         // Show the host's Start button in the QR panel
         const startBtn = $("btn-start-online");
         if (startBtn) {
             startBtn.classList.remove("hidden");
             startBtn.onclick = async () => {
                 try {
-                    // Send START over the WebSocket (single /app/room destination) so the
-                    // backend's authoritative GameService can transition the room to PLAYING
-                    // and broadcast the shared initial state to every subscriber.
-                    G.api.sendRoom(G.code, "START", G.myName, null);
+                    // Host transitions room to PLAYING and broadcasts initial state
+                    G.lastState.status = "PLAYING";
+                    G.lastState.log.push("Game started by host!");
+                    G.api.sendRoom(G.code, "STATE", G.myName, G.lastState);
                     toast("Game started!");
                 } catch (e) {
                     toast("Could not start: " + e.message);
@@ -770,9 +744,11 @@
     }
 
     /**
-     * WebSocket message handler invoked on every broadcast from /topic/room/{code}.
-     * The backend GameService is the single source of truth; apply its STATE
-     * messages so remote moves render on every device in real time.
+     * WebSocket message handler invoked on every broadcast from /topic/room.{code}.
+     * The backend relay echoes all messages to all subscribers.
+     * - Host receives actions (START, JOIN, ROLL, USE_POWERUP) from joiners, processes them
+     *   with LocalEngine, and broadcasts the new STATE.
+     * - All clients receive STATE broadcasts and apply them via applyState.
      * The handler is tolerant of casing ("state"/"STATE") and of whether the
      * state is nested under `state` or sent as the message body directly.
      */
@@ -780,6 +756,7 @@
         if (!data) return;
         const type = (data.type || "").toString().toUpperCase();
         if (type === "STATE") {
+            // State broadcast from host (or echo of host's own broadcast)
             const st = data.state || data;
             if (st) applyState(st, false);
         } else if (type === "ERROR") {
@@ -792,6 +769,52 @@
             }
         } else if (type === "ACK" || type === "INFO") {
             // Best-effort informational messages (e.g. "started") — ignore.
+        } else if (G.isHost && G.engine) {
+            // Host processes actions from joiners
+            const playerName = data.player;
+            const payload = data.payload || {};
+            if (type === "START") {
+                // Host transitions room to PLAYING and broadcasts initial state
+                if (G.lastState && G.lastState.status === "WAITING") {
+                    G.lastState.status = "PLAYING";
+                    G.lastState.log.push("Game started by host!");
+                    G.api.sendRoom(G.code, "STATE", G.myName, G.lastState);
+                }
+            } else if (type === "JOIN") {
+                // Add joining player to the engine
+                const isAI = payload.ai === true;
+                const colorIdx = G.engine.seats.length % PALETTE.length;
+                G.engine.seats.push({
+                    name: playerName,
+                    ai: isAI,
+                    difficulty: "EASY",
+                    color: PALETTE[colorIdx],
+                    position: 0,
+                    shield: false,
+                    doubleAvailable: false,
+                    freezeAvailable: false,
+                    pendingDouble: false,
+                    frozenTurns: 0,
+                    finished: false,
+                    placement: 0,
+                    personalTurns: 0
+                });
+                // Broadcast updated state with new player
+                const st = G.engine.state();
+                st.status = G.lastState.status; // Preserve WAITING/PLAYING
+                G.lastState = st;
+                G.api.sendRoom(G.code, "STATE", G.myName, st);
+            } else if (type === "ROLL") {
+                // Process roll for the named player
+                const st = G.engine.roll(playerName);
+                G.lastState = st;
+                G.api.sendRoom(G.code, "STATE", G.myName, st);
+            } else if (type === "USE_POWERUP") {
+                // Process power-up use
+                const st = G.engine.usePowerUp(playerName, payload.type, payload.target);
+                G.lastState = st;
+                G.api.sendRoom(G.code, "STATE", G.myName, st);
+            }
         }
     }
 
@@ -809,24 +832,14 @@
         G.code = roomCode;
         G.local = false;
         G.online = true;
-        // ONLINE is server-authoritative: do NOT create a LocalEngine here and
-        // do NOT fabricate other seats/bots locally — the server owns the roster.
+        // Joiner does NOT create a LocalEngine — the host is authoritative.
         $("setup-modal").classList.add("hidden");
         $("mode-label").textContent = "Online · Room " + roomCode;
         await G.api.connectWs();
         G.api.subscribeRoom(roomCode, onWs);
-        // Tell the server we joined so it can broadcast the updated roster
+        // Tell the host we joined so it can add us to the game and broadcast updated state
         G.api.sendRoom(roomCode, "JOIN", G.myName, { ai: false });
-        // Fetch authoritative state (re-sync on reconnect)
-        G.api.syncRoom(roomCode).then(st => {
-            if (st) {
-                G.lastState = st;
-                applyState(st, false);
-                scheduleNext(st);
-            }
-        }).catch(() => {
-            $("mode-label").textContent = "Online · Room " + roomCode + " · Waiting for host to start";
-        });
+        // State will arrive via WebSocket broadcast from host
         toast("Joined room " + roomCode);
     }
 

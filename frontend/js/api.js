@@ -88,9 +88,9 @@
             this.onRoomMessage = onMessage || null;
             if (!this.stomp || !this.ws) return;
             try {
-                // Subscribe to /topic/room/<code> (slash separator) to match the
-                // backend's @SendTo("/topic/room/{code}") broadcast destination.
-                this.stomp.subscribe('/topic/room/' + roomCode, (msg) => {
+                // Subscribe to /topic/room.{code} (dot separator) to match the
+                // backend's @SendTo("/topic/room.{code}") broadcast destination.
+                this.stomp.subscribe('/topic/room.' + roomCode, (msg) => {
                     try {
                         const data = JSON.parse(msg.body);
                         if (this.onRoomMessage) this.onRoomMessage(data);
@@ -100,9 +100,10 @@
         }
 
         /**
-         * Send an action to the backend's single WebSocket destination /app/room.
-         * The body is a WebSocketInMessage shape: { roomCode, type (uppercase),
-         * player, payload }. The backend routes by `type` (ROLL/JOIN/START/USE_POWERUP/LEAVE).
+         * Send a message to the backend's per-room WebSocket destination /app/room.{code}.state.
+         * The body can be either a full state object (for host broadcasts) or an action message
+         * (for joiner actions like ROLL/START/JOIN/USE_POWERUP). The backend relay simply
+         * echoes whatever it receives to all subscribers of /topic/room.{code}.
          */
         sendRoom(roomCode, type, player, payload) {
             if (!this.stomp || !this.ws) return;
@@ -113,14 +114,14 @@
                     player: player || null,
                     payload: payload || null
                 };
-                this.stomp.send('/app/room', JSON.stringify(msg));
+                this.stomp.send('/app/room.' + roomCode + '.state', JSON.stringify(msg));
             } catch (e) {}
         }
 
         /* ---------------- REST re-sync on (re)connect ---------------- */
         async syncRoom(roomCode) {
             try {
-                const st = await this.get("/games/" + enc(roomCode.toUpperCase()));
+                const st = await this.get("/rooms/" + enc(roomCode.toUpperCase()));
                 return st || null;
             } catch (e) {
                 return null;
