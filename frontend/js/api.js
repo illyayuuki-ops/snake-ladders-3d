@@ -53,12 +53,9 @@
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });
         }
-        startRoom(code, username) {
-            return this.post("/rooms/" + enc(code.toUpperCase()) + "/start", { username });
-        }
-        getRoom(code) {
-            return this.get("/rooms/" + enc(code.toUpperCase()));
-        }
+        // NOTE: room START is sent over the WebSocket (single /app/room destination)
+        // so the backend's authoritative GameService can transition the room to
+        // PLAYING and broadcast the shared initial state to every subscriber.
 
         /* ---------------- WebSocket helpers ---------------- */
         connectWs() {
@@ -91,7 +88,9 @@
             this.onRoomMessage = onMessage || null;
             if (!this.stomp || !this.ws) return;
             try {
-                this.stomp.subscribe('/topic/room.' + roomCode, (msg) => {
+                // Subscribe to /topic/room/<code> (slash separator) to match the
+                // backend's @SendTo("/topic/room/{code}") broadcast destination.
+                this.stomp.subscribe('/topic/room/' + roomCode, (msg) => {
                     try {
                         const data = JSON.parse(msg.body);
                         if (this.onRoomMessage) this.onRoomMessage(data);
@@ -100,18 +99,28 @@
             } catch (e) {}
         }
 
-        sendRoom(roomCode, type, payload) {
+        /**
+         * Send an action to the backend's single WebSocket destination /app/room.
+         * The body is a WebSocketInMessage shape: { roomCode, type (uppercase),
+         * player, payload }. The backend routes by `type` (ROLL/JOIN/START/USE_POWERUP/LEAVE).
+         */
+        sendRoom(roomCode, type, player, payload) {
             if (!this.stomp || !this.ws) return;
             try {
-                const msg = Object.assign({ type: type }, payload || {});
-                this.stomp.send('/app/room.' + roomCode + '.' + type.toLowerCase(), JSON.stringify(msg));
+                const msg = {
+                    roomCode: roomCode,
+                    type: String(type).toUpperCase(),
+                    player: player || null,
+                    payload: payload || null
+                };
+                this.stomp.send('/app/room', JSON.stringify(msg));
             } catch (e) {}
         }
 
         /* ---------------- REST re-sync on (re)connect ---------------- */
         async syncRoom(roomCode) {
             try {
-                const st = await this.get("/games/" + enc(roomCode.toUpperCase()) + "/state");
+                const st = await this.get("/games/" + enc(roomCode.toUpperCase()));
                 return st || null;
             } catch (e) {
                 return null;

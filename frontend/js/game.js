@@ -397,7 +397,10 @@
         if (G.online) {
             setRollLabel("Rolling…", false);
             sound("roll");
-            G.api.sendRoom(G.code, "ROLL", player);
+            // player must be the current turn's player NAME (string), not an object
+            const name = (typeof player === "string") ? player
+                : (G.lastState ? G.lastState.currentPlayerName : null);
+            G.api.sendRoom(G.code, "ROLL", name, null);
             return;
         }
         setRollLabel("Rolling…", false);
@@ -486,7 +489,7 @@
         // ONLINE mode: delegate to the server (authoritative). Never use a LocalEngine.
         if (G.online) {
             setRollLabel("Using…", false);
-            G.api.sendRoom(G.code, "USE_POWERUP", { player: cur.name, type: type, target: target ? target.name : null });
+            G.api.sendRoom(G.code, "USE_POWERUP", cur.name, { type: type, target: target ? target.name : null });
             return;
         }
         setRollLabel("Using…", false);
@@ -754,7 +757,10 @@
             startBtn.classList.remove("hidden");
             startBtn.onclick = async () => {
                 try {
-                    await G.api.startRoom(G.code, G.myName);
+                    // Send START over the WebSocket (single /app/room destination) so the
+                    // backend's authoritative GameService can transition the room to PLAYING
+                    // and broadcast the shared initial state to every subscriber.
+                    G.api.sendRoom(G.code, "START", G.myName, null);
                     toast("Game started!");
                 } catch (e) {
                     toast("Could not start: " + e.message);
@@ -764,32 +770,28 @@
     }
 
     /**
-     * WebSocket message handler invoked on every broadcast from /topic/room.{code}.
+     * WebSocket message handler invoked on every broadcast from /topic/room/{code}.
      * The backend GameService is the single source of truth; apply its STATE
      * messages so remote moves render on every device in real time.
+     * The handler is tolerant of casing ("state"/"STATE") and of whether the
+     * state is nested under `state` or sent as the message body directly.
      */
     function onWs(data) {
         if (!data) return;
-        if (data.type === "state" && data.state) {
-            applyState(data.state, false);
-        } else if (data.type === "error") {
+        const type = (data.type || "").toString().toUpperCase();
+        if (type === "STATE") {
+            const st = data.state || data;
+            if (st) applyState(st, false);
+        } else if (type === "ERROR") {
             toast("Server error: " + (data.message || "unknown"));
-        } else if (data.type === "roster" && data.players) {
+        } else if (type === "ROSTER" && data.players) {
             // Roster update (JOIN/LEAVE) — refresh the player list from server truth
             if (G.lastState) {
                 G.lastState.players = data.players;
                 renderState(G.lastState);
             }
-        }
-    }
-
-    async function startOnlineRoomFromHost() {
-        if (!G.code || !G.myName) return;
-        try {
-            await G.api.startRoom(G.code, G.myName);
-            toast("Game started!");
-        } catch (e) {
-            toast("Could not start: " + e.message);
+        } else if (type === "ACK" || type === "INFO") {
+            // Best-effort informational messages (e.g. "started") — ignore.
         }
     }
 
@@ -814,7 +816,7 @@
         await G.api.connectWs();
         G.api.subscribeRoom(roomCode, onWs);
         // Tell the server we joined so it can broadcast the updated roster
-        G.api.sendRoom(roomCode, "JOIN", G.myName);
+        G.api.sendRoom(roomCode, "JOIN", G.myName, { ai: false });
         // Fetch authoritative state (re-sync on reconnect)
         G.api.syncRoom(roomCode).then(st => {
             if (st) {
