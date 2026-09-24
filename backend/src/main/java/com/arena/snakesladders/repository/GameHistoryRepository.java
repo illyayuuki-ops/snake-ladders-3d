@@ -15,4 +15,10 @@ public interface GameHistoryRepository extends JpaRepository<GameHistory, Long> 
 
     /** Fetch history for a specific player within a date range. */
     List<GameHistory> findByUsernameAndPlayedAtBetweenOrderByPlayedAtDesc(String username, LocalDateTime start, LocalDateTime end);
+
+    /** Delete all history records for a given username (case-insensitive). Used for demo-data cleanup. */
+    void deleteByUsernameIgnoreCase(String username);
+
+    /** Count history records for a specific username. */
+    long countByUsernameIgnoreCase(String username);
 }

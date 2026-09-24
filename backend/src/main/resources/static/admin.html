@@ -319,6 +319,7 @@
                 <div class="admin-subtitle">Play History Calendar & Reports</div>
             </div>
             <div style="display: flex; gap: 12px; align-items: center;">
+                <button id="btn-keyboard" class="btn btn-secondary" type="button">⌨️ Keyboard Controls</button>
                 <a href="/" class="btn btn-secondary">← Back to Game</a>
                 <button id="btn-logout" class="btn btn-secondary">Logout</button>
             </div>
@@ -387,6 +388,28 @@
 
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
+
+    <!-- Keyboard Controls Panel (admin-assigned roll keys, persisted per-device) -->
+    <div id="keyboard-panel" class="keyboard-panel" style="display: none;">
+        <div class="keyboard-panel-inner">
+            <div class="keyboard-panel-header">
+                <h3>⌨️ Keyboard Roll Controls</h3>
+                <button id="btn-close-kb" class="btn btn-secondary" type="button">✕</button>
+            </div>
+            <p class="keyboard-panel-hint">
+                Assign a keyboard key to each player seat for LOCAL multiplayer.
+                Settings are saved in this browser's localStorage (per-device).
+                Press the input and then press any key to capture it.
+            </p>
+            <div id="keyboard-rows" class="keyboard-rows">
+                <!-- populated by JS -->
+            </div>
+            <div class="keyboard-panel-actions">
+                <button id="btn-reset-kb" class="btn btn-secondary" type="button">Reset to Defaults</button>
+                <button id="btn-save-kb" class="btn btn-primary" type="button">Save Mapping</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ======================= ADMIN HISTORY LOGIC =======================
@@ -604,6 +627,139 @@
                 toast.className = 'toast show ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
                 setTimeout(() => toast.classList.remove('show'), 3000);
             }
+
+            // ======================= KEYBOARD CONTROLS PANEL =======================
+            const KB_STORAGE = "rollKeyMap";
+            const DEFAULT_KB_MAP = {
+                "Space": "Player 1",
+                "Enter": "Player 2",
+                "Digit1": "Player 1",
+                "Digit2": "Player 2"
+            };
+            const KEYBOARD_SEATS = [
+                { label: "Player 1", defaultKey: "Space" },
+                { label: "Player 2", defaultKey: "Enter" },
+                { label: "Player 3", defaultKey: "KeyQ" },
+                { label: "Player 4", defaultKey: "KeyE" }
+            ];
+
+            const kbPanel = document.getElementById('keyboard-panel');
+            const btnKeyboard = document.getElementById('btn-keyboard');
+            const btnCloseKb = document.getElementById('btn-close-kb');
+            const btnResetKb = document.getElementById('btn-reset-kb');
+            const btnSaveKb = document.getElementById('btn-save-kb');
+            const kbRows = document.getElementById('keyboard-rows');
+
+            function loadKbMap() {
+                try {
+                    const raw = localStorage.getItem(KB_STORAGE);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && typeof parsed === "object") return parsed;
+                    }
+                } catch (e) { /* ignore */ }
+                return Object.assign({}, DEFAULT_KB_MAP);
+            }
+
+            function saveKbMap(map) {
+                try { localStorage.setItem(KB_STORAGE, JSON.stringify(map)); return true; }
+                catch (e) { return false; }
+            }
+
+            function keyHumanLabel(keyOrCode) {
+                if (!keyOrCode) return "(none)";
+                if (keyOrCode === "Space") return "Spacebar";
+                if (keyOrCode.startsWith("Digit")) return keyOrCode.replace("Digit", "");
+                if (keyOrCode.startsWith("Key")) return keyOrCode.replace("Key", "");
+                if (keyOrCode.startsWith("Arrow")) return keyOrCode.replace("Arrow", "▲▼◀▶ ");
+                return keyOrCode;
+            }
+
+            function renderKbRows(map) {
+                kbRows.innerHTML = "";
+                KEYBOARD_SEATS.forEach(seat => {
+                    const row = document.createElement("div");
+                    row.className = "keyboard-row";
+
+                    const label = document.createElement("div");
+                    label.className = "keyboard-seat-label";
+                    label.textContent = seat.label;
+
+                    const capture = document.createElement("input");
+                    capture.type = "text";
+                    capture.className = "keyboard-key-input";
+                    capture.readOnly = true;
+                    capture.placeholder = "Press a key…";
+
+                    // Find the currently-assigned key for this seat
+                    const assignedKey = Object.keys(map).find(k => map[k] === seat.label);
+                    capture.value = assignedKey ? keyHumanLabel(assignedKey) : "";
+                    capture.dataset.code = assignedKey || "";
+
+                    let capturing = false;
+                    const stopCapture = () => {
+                        capturing = false;
+                        capture.classList.remove("capturing");
+                        capture.value = capture.dataset.code ? keyHumanLabel(capture.dataset.code) : "";
+                        document.removeEventListener("keydown", onCaptureKey, true);
+                    };
+
+                    const onCaptureKey = (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        if (!capturing) return;
+                        // Ignore modifier-only presses
+                        if (["Control", "Alt", "Shift", "Meta"].includes(ev.key)) return;
+
+                        const code = ev.code;
+                        // Remove any previous assignment for this seat
+                        Object.keys(map).forEach(k => { if (map[k] === seat.label) delete map[k]; });
+                        map[code] = seat.label;
+
+                        capture.dataset.code = code;
+                        capture.value = keyHumanLabel(code);
+                        capturing = false;
+                        capture.classList.remove("capturing");
+                        document.removeEventListener("keydown", onCaptureKey, true);
+                    };
+
+                    capture.addEventListener("click", () => {
+                        capturing = true;
+                        capture.classList.add("capturing");
+                        capture.value = "Press a key…";
+                        document.addEventListener("keydown", onCaptureKey, true);
+                        // Blur to avoid focus rings
+                        setTimeout(() => capture.blur(), 0);
+                    });
+
+                    capture.addEventListener("blur", stopCapture);
+
+                    row.appendChild(label);
+                    row.appendChild(capture);
+                    kbRows.appendChild(row);
+                });
+            }
+
+            function openKeyboardPanel() {
+                renderKbRows(loadKbMap());
+                kbPanel.style.display = "block";
+            }
+            function closeKeyboardPanel() {
+                kbPanel.style.display = "none";
+            }
+
+            if (btnKeyboard) btnKeyboard.addEventListener("click", openKeyboardPanel);
+            if (btnCloseKb) btnCloseKb.addEventListener("click", closeKeyboardPanel);
+            if (btnResetKb) btnResetKb.addEventListener("click", () => {
+                saveKbMap(Object.assign({}, DEFAULT_KB_MAP));
+                renderKbRows(loadKbMap());
+                showToast("Keyboard mapping reset to defaults", "success");
+            });
+            if (btnSaveKb) btnSaveKb.addEventListener("click", () => {
+                const map = loadKbMap();
+                const ok = saveKbMap(map);
+                showToast(ok ? "Keyboard mapping saved" : "Failed to save mapping", ok ? "success" : "error");
+            });
         })();
     </script>
 </body>

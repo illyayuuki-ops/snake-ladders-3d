@@ -45,6 +45,11 @@ public class PlayerService {
         return playerRepository.existsByUsernameIgnoreCase(username);
     }
 
+    /** Total number of registered players. */
+    public long count() {
+        return playerRepository.count();
+    }
+
     public Player create(CreatePlayerRequest req) {
         if (playerRepository.existsByUsernameIgnoreCase(req.getUsername())) {
             throw new IllegalArgumentException("Username '" + req.getUsername() + "' is already taken.");
@@ -77,6 +82,29 @@ public class PlayerService {
                 .orElseGet(() -> playerRepository.save(new Player(username.trim())));
     }
 
+    /**
+     * Find an existing profile or create one with a specific createdAt timestamp.
+     * Used by the backdated demo seeding so created_at matches the target date.
+     * Because createdAt is updatable=false, this MUST be called before the
+     * first insert of the entity.
+     */
+    public Player createOrGetWithCreatedAt(String username, LocalDateTime createdAt) {
+        return playerRepository.findByUsernameIgnoreCase(username)
+                .orElseGet(() -> {
+                    Player p = new Player(username.trim());
+                    p.setCreatedAt(createdAt);
+                    return playerRepository.save(p);
+                });
+    }
+
+    /** Delete a player and all their game history by username (case-insensitive). */
+    public void deleteByUsername(String username) {
+        playerRepository.findByUsernameIgnoreCase(username).ifPresent(p -> {
+            playerRepository.delete(p);
+            historyRepository.deleteByUsernameIgnoreCase(username);
+        });
+    }
+
     /** Search players by substring (case-insensitive), capped at limit. If query is blank, return first N players. */
     public List<Player> search(String query, int limit) {
         if (query == null || query.trim().isEmpty()) {
@@ -99,9 +127,13 @@ public class PlayerService {
         historyRepository.save(gh);
     }
 
-    /** Record a finished match result for a player with a specific playedAt timestamp (for seeding). */
+    /**
+     * Record a finished match result for a player with a specific playedAt timestamp (for seeding).
+     * If the player does not yet exist, creates them with createdAt = playedAt so the
+     * updatable=false column is set correctly on first insert.
+     */
     public void recordMatchWithTimestamp(String username, String mode, String variant, boolean won, int turns, int placement, LocalDateTime playedAt) {
-        Player p = createOrGet(username);
+        Player p = createOrGetWithCreatedAt(username, playedAt);
         playerRepository.incrementStats(p.getId(), won, turns);
 
         // Persist detailed game history with custom timestamp

@@ -23,6 +23,7 @@
         soundOn: true, audio: null,
         config: { variant: "CLASSIC", localCount: 2, localNames: [], mode: "LOCAL" },
         engine: null, stateQueue: null,
+        local: false, // true only for LOCAL multiplayer (keyboard roll mapping applies)
         // riddle state
         riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null },
         // background music state
@@ -387,6 +388,77 @@
         applyState(st, true);
     }
 
+    /* ---------------- keyboard roll mapping (local multiplayer) ---------------- */
+    const ROLL_KEY_MAP_STORAGE = "rollKeyMap";
+    const DEFAULT_ROLL_KEY_MAP = {
+        "Space": "Player 1",
+        "Enter": "Player 2",
+        "Digit1": "Player 1",
+        "Digit2": "Player 2"
+    };
+
+    /** Load the admin-configurable key->player mapping from localStorage. */
+    function loadRollKeyMap() {
+        try {
+            const raw = localStorage.getItem(ROLL_KEY_MAP_STORAGE);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === "object") return parsed;
+            }
+        } catch (e) { /* ignore corrupt storage */ }
+        return Object.assign({}, DEFAULT_ROLL_KEY_MAP);
+    }
+
+    /** Check whether the focused element is a text input/textarea/select (typing should not roll). */
+    function isTypingContext(activeEl) {
+        if (!activeEl) return false;
+        const tag = (activeEl.tagName || "").toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select" || tag === "button") {
+            // Only block on text-like inputs; buttons are fine to trigger
+            const type = (activeEl.getAttribute("type") || "").toLowerCase();
+            if (tag === "input" && (type === "text" || type === "password" || type === "email" || type === "search" || type === "number" || type === "tel" || type === "url")) {
+                return true;
+            }
+            if (tag === "textarea" || tag === "select") return true;
+            // For other input types (checkbox/range/etc.) also block to be safe
+            if (tag === "input") return true;
+        }
+        if (activeEl.isContentEditable === "true") return true;
+        return false;
+    }
+
+    /**
+     * Document-level keydown handler for admin-assigned keyboard roll controls.
+     * Only active in LOCAL mode, only on the mapped player's turn, and only when
+     * the game is not busy and focus is not in a text input.
+     */
+    function onRollKeyDown(e) {
+        // Ignore if focus is in a text-like input (typing should not roll)
+        if (isTypingContext(document.activeElement)) return;
+
+        // Keyboard rolling is only for LOCAL multiplayer
+        if (G.mode !== "LOCAL" || !G.local) return;
+        if (G.busy) return;
+        if (!G.lastState) return;
+
+        const keyMap = loadRollKeyMap();
+        // Map both key and code so admin-assigned keys work regardless of layout
+        const mappedPlayer = keyMap[e.key] || keyMap[e.code];
+        if (!mappedPlayer) return;
+
+        // Only roll if it is currently this player's turn
+        if (G.lastState.currentPlayerName !== mappedPlayer) return;
+
+        // Prevent default so e.g. Space/Enter don't scroll or submit forms
+        e.preventDefault();
+        doRoll(mappedPlayer);
+    }
+
+    /** Register the document-level keydown listener (once). */
+    function enableKeyboardRolling() {
+        document.addEventListener("keydown", onRollKeyDown, true); // capture phase for priority
+    }
+
     function usePowerup(type) {
         if (G.busy || !G.code) return;
         const st = G.lastState; if (!st) return;
@@ -564,6 +636,7 @@
         for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
         G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false; G.code = "LOCAL";
+        G.local = true;
         G.myName = selected[0]; // Track the first player as "me"
         const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
         G.engine = new LocalEngine();
@@ -630,6 +703,7 @@
         G.mode = "ONLINE"; G.variant = G.config.variant; G.built = false;
         G.isHost = true;
         G.code = G.roomCode;
+        G.local = false;
         const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
         G.engine = new LocalEngine();
         const st = G.engine.create({ mode: "ONLINE", variant: G.config.variant, difficulty: "EASY", players });
@@ -656,6 +730,7 @@
         G.mode = "ONLINE"; G.variant = G.config.variant; G.built = false;
         G.isHost = false;
         G.code = roomCode;
+        G.local = false;
         const players = selected.map((n, i) => ({ name: n, ai: i > 0, color: PALETTE[i % PALETTE.length] }));
         G.engine = new LocalEngine();
         const st = G.engine.create({ mode: "ONLINE", variant: G.config.variant, difficulty: "EASY", players });
@@ -985,6 +1060,9 @@
         loadLeaderboard("winrate");
         $("btn-roll").onclick = () => doRoll(G.lastState ? G.lastState.currentPlayerName : null);
         G.board.setCamera(58, 0, 1);
+
+        // Enable admin-assigned keyboard roll controls (LOCAL multiplayer only)
+        enableKeyboardRolling();
 
         // Deep-link join: ?room=CODE
         const params = new URLSearchParams(location.search);
