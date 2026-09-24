@@ -34,6 +34,7 @@ public class GameStateResponse {
         public boolean finished;
         public int placement;
         public boolean isCurrent;
+        public int personalTurns;
     }
 
     public static class MoveEvent {

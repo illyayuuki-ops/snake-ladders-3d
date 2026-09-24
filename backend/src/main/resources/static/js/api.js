@@ -53,7 +53,10 @@
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });
         }
-        // NOTE: room START is sent over the WebSocket (single /app/room destination)
+        startRoom(code) {
+            return this.post("/rooms/" + enc(code.toUpperCase()) + "/start", {});
+        }
+        // NOTE: room START is sent over REST to /api/rooms/{code}/start
         // so the backend's authoritative GameService can transition the room to
         // PLAYING and broadcast the shared initial state to every subscriber.
 
@@ -88,9 +91,9 @@
             this.onRoomMessage = onMessage || null;
             if (!this.stomp || !this.ws) return;
             try {
-                // Subscribe to /topic/room.{code} (dot separator) to match the
-                // backend's @SendTo("/topic/room.{code}") broadcast destination.
-                this.stomp.subscribe('/topic/room.' + roomCode, (msg) => {
+                // Subscribe to /topic/room/{code} (slash separator) to match the
+                // backend's broadcast destination.
+                this.stomp.subscribe('/topic/room/' + roomCode, (msg) => {
                     try {
                         const data = JSON.parse(msg.body);
                         if (this.onRoomMessage) this.onRoomMessage(data);
@@ -100,10 +103,10 @@
         }
 
         /**
-         * Send a message to the backend's per-room WebSocket destination /app/room.{code}.state.
-         * The body can be either a full state object (for host broadcasts) or an action message
-         * (for joiner actions like ROLL/START/JOIN/USE_POWERUP). The backend relay simply
-         * echoes whatever it receives to all subscribers of /topic/room.{code}.
+         * Send a message to the backend's single WebSocket destination /app/room.
+         * The body includes roomCode, type, player, and optional payload.
+         * The backend delegates to the authoritative GameSession and broadcasts
+         * the resulting GameStateResponse to /topic/room/{code}.
          */
         sendRoom(roomCode, type, player, payload) {
             if (!this.stomp || !this.ws) return;
@@ -114,7 +117,7 @@
                     player: player || null,
                     payload: payload || null
                 };
-                this.stomp.send('/app/room.' + roomCode + '.state', JSON.stringify(msg));
+                this.stomp.send('/app/room', JSON.stringify(msg));
             } catch (e) {}
         }
 

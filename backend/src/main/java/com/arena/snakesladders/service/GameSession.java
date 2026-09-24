@@ -59,6 +59,10 @@ public class GameSession {
 
     public void advanceTurn() {
         int n = seats.size();
+        if (n == 0) {
+            currentIndex = 0;
+            return;
+        }
         for (int step = 1; step <= n; step++) {
             int idx = (currentIndex + step) % n;
             if (!seats.get(idx).finished) {
@@ -66,8 +70,7 @@ public class GameSession {
                 return;
             }
         }
-        // everyone finished
-        currentIndex = (currentIndex + 1) % n;
+        currentIndex = 0;
     }
 
     /**
