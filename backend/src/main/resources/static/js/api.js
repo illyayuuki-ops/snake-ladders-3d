@@ -1,6 +1,6 @@
 /* ============================================================
-   api.js — REST client for local + online multiplayer mode
-   ============================================================ */
+    api.js — REST + WebSocket client for local + online multiplayer mode
+    ============================================================ */
 (function (global) {
     "use strict";
 
@@ -10,6 +10,11 @@
         constructor(base) {
             const baseOrigin = (location.protocol === 'file:' ? 'http://localhost:8080' : `${location.protocol}//${location.host}`);
             this.base = base || baseOrigin + '/api';
+            this.ws = null;
+            this.stomp = null;
+            this.roomCode = null;
+            this.onRoomMessage = null;
+            this._onSync = null; // optional callback invoked after a REST re-sync
         }
 
         async _req(method, url, body) {
@@ -41,12 +46,89 @@
         riddle() { return this.get("/riddle"); }
         searchPlayers(q, limit) { return this.get("/players/search?q=" + enc(q || "") + "&limit=" + (limit || 20)); }
 
-        /* ---------------- online room methods ---------------- */
+        /* ---------------- online room methods (REST) ---------------- */
         createRoom(username, mode, variant) {
             return this.post("/rooms", { username, mode, variant });
         }
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });
+        }
+        startRoom(code, username) {
+            return this.post("/rooms/" + enc(code.toUpperCase()) + "/start", { username });
+        }
+        getRoom(code) {
+            return this.get("/rooms/" + enc(code.toUpperCase()));
+        }
+
+        /* ---------------- WebSocket helpers ---------------- */
+        connectWs() {
+            return new Promise((resolve) => {
+                try {
+                    if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
+                        const socket = new SockJS('/ws');
+                        const stomp = Stomp.over(socket);
+                        this.stomp = stomp;
+                        stomp.connect({}, () => {
+                            this.ws = stomp;
+                            resolve(true);
+                        }, () => {
+                            this.ws = null;
+                            resolve(false);
+                        });
+                    } else {
+                        this.ws = null;
+                        resolve(false);
+                    }
+                } catch (e) {
+                    this.ws = null;
+                    resolve(false);
+                }
+            });
+        }
+
+        subscribeRoom(roomCode, onMessage) {
+            this.roomCode = roomCode;
+            this.onRoomMessage = onMessage || null;
+            if (!this.stomp || !this.ws) return;
+            try {
+                this.stomp.subscribe('/topic/room.' + roomCode, (msg) => {
+                    try {
+                        const data = JSON.parse(msg.body);
+                        if (this.onRoomMessage) this.onRoomMessage(data);
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        }
+
+        sendRoom(roomCode, type, payload) {
+            if (!this.stomp || !this.ws) return;
+            try {
+                const msg = Object.assign({ type: type }, payload || {});
+                this.stomp.send('/app/room.' + roomCode + '.' + type.toLowerCase(), JSON.stringify(msg));
+            } catch (e) {}
+        }
+
+        /* ---------------- REST re-sync on (re)connect ---------------- */
+        async syncRoom(roomCode) {
+            try {
+                const st = await this.get("/games/" + enc(roomCode.toUpperCase()) + "/state");
+                return st || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        /** Set a callback invoked after a REST re-sync completes. */
+        setOnSync(fn) { this._onSync = fn; }
+
+        /** Trigger a REST re-sync for the current room (used on WebSocket reconnect). */
+        async _syncStates() {
+            if (!this.roomCode) return;
+            const st = await this.syncRoom(this.roomCode);
+            if (st && this._onSync) {
+                try { this._onSync(st); } catch (e) {}
+            }
+            return st;
         }
     }
 
