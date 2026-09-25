@@ -53,12 +53,6 @@
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });
         }
-        startRoom(code) {
-            return this.post("/rooms/" + enc(code.toUpperCase()) + "/start", {});
-        }
-        // NOTE: room START is sent over REST to /api/rooms/{code}/start
-        // so the backend's authoritative GameService can transition the room to
-        // PLAYING and broadcast the shared initial state to every subscriber.
 
         /* ---------------- WebSocket helpers ---------------- */
         connectWs() {

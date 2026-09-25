@@ -706,17 +706,9 @@
         const startBtn = $("btn-start-online");
         if (startBtn) {
             startBtn.classList.remove("hidden");
-            startBtn.onclick = async () => {
-                try {
-                    await G.api.startRoom(G.code);
-                    toast("Game started!");
-                } catch (e) {
-                    // /start REST endpoint is not exposed by this backend variant:
-                    // start the authoritative session via the WebSocket START action,
-                    // which the server validates (host only) and broadcasts as STATE.
-                    G.api.sendRoom(G.code, "START", G.myName, null);
-                    toast("Starting game…");
-                }
+            startBtn.onclick = () => {
+                G.api.sendRoom(G.code, "START", G.myName, null);
+                toast("Starting game…");
             };
         }
     }
