@@ -2,7 +2,7 @@
 
 A responsive, **3D** Snakes & Ladders game for 2–4 local players.
 
-* **Frontend:** HTML5, vanilla ES6 JavaScript, CSS 3D transforms (`perspective`, `rotateX/Y`, `preserve-3d`), Tailwind (CDN).
+* **Frontend:** HTML5, vanilla ES6 JavaScript, CSS 3D transforms (`perspective`, `rotateX/Y`, `preserve-3d`), locally precompiled Tailwind.
 * **Backend:** Java 11 + Spring Boot (player profiles + leaderboard only).
 * **Database:** H2 (default, zero-setup) or PostgreSQL (optional).
 
