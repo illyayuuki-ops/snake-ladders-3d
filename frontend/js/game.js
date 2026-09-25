@@ -700,6 +700,9 @@
         $("mode-label").textContent = "Online · Room " + G.roomCode + " · Waiting to start";
         await G.api.connectWs();
         G.api.subscribeRoom(G.code, onWs);
+        // Wire up reconnect re-sync: when WebSocket reconnects, _syncStates fetches
+        // the room state via REST and invokes this callback to apply it.
+        G.api.setOnSync(st => applyState(st, false));
         // Host's Start button triggers the authoritative session via REST. The
         // backend (createAndStartSession) builds the board and broadcasts the
         // initial STATE, which this client renders through onWs.
@@ -707,7 +710,7 @@
         if (startBtn) {
             startBtn.classList.remove("hidden");
             startBtn.onclick = () => {
-                G.api.sendRoom(G.code, "START", G.myName, null);
+                G.api.start(G.code, G.myName);
                 toast("Starting game…");
             };
         }
@@ -754,6 +757,8 @@
         $("mode-label").textContent = "Online · Room " + roomCode;
         await G.api.connectWs();
         G.api.subscribeRoom(roomCode, onWs);
+        // Wire up reconnect re-sync for joiners as well.
+        G.api.setOnSync(st => applyState(st, false));
         // Best-effort REST re-sync of room metadata (tolerant of no live session yet).
         // The authoritative game state is delivered via WebSocket STATE broadcasts.
         try {

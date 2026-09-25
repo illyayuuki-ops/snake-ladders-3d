@@ -53,6 +53,10 @@
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });
         }
+        start(code, player) {
+            // Send START over WebSocket (server-authoritative); REST /rooms/{code}/start not exposed
+            return this.sendRoom(code, "START", player, null);
+        }
 
         /* ---------------- WebSocket helpers ---------------- */
         connectWs() {
@@ -64,6 +68,8 @@
                         this.stomp = stomp;
                         stomp.connect({}, () => {
                             this.ws = stomp;
+                            // Re-sync room state on (re)connect for resilience
+                            this._syncStates();
                             resolve(true);
                         }, () => {
                             this.ws = null;
