@@ -2,6 +2,8 @@
 target/
 backend/target/
 *.class
+node_modules/
+dist/
 
 # Database files
 data/
