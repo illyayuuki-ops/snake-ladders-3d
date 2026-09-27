@@ -1,0 +1,23 @@
+name: snakes_ladders_server
+description: Server-authoritative backend for Snakes & Ladders 3D — Arena Edition. REST API + WebSocket real-time contract, PostgreSQL (production) / SQLite (dev) persistence.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  snakes_ladders_shared:
+    path: ../shared
+  shelf: ^1.4.0
+  shelf_router: ^1.1.0
+  shelf_web_socket: ^2.0.0
+  web_socket_channel: ^3.0.0
+  sqlite3: ^2.4.0
+  postgres: ^3.5.0
+  args: ^2.5.0
+  path: ^1.9.0
+
+dev_dependencies:
+  test: ^1.25.0
+  http: ^1.2.0
