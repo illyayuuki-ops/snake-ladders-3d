@@ -97,46 +97,134 @@
     <!-- ======================= SETUP MODAL ======================= -->
     <div id="setup-modal" class="overlay">
         <div class="setup-card glass">
-            <h2 id="setup-title">Local Game</h2>
-            <div class="field">
-                <label>Game Mode</label>
-                <div class="seg" id="seg-mode">
-                    <button data-mode="LOCAL" class="active">Local</button>
-                    <button data-mode="ONLINE">Online</button>
-                </div>
-                <p id="mode-desc" class="hint">Local multiplayer on one device.</p>
+            <!-- Dice/Logo Badge -->
+            <div class="setup-badge" aria-hidden="true">
+                <svg viewBox="0 0 64 64" width="80" height="80" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#7c5cff"/>
+                            <stop offset="50%" stop-color="#6ea8fe"/>
+                            <stop offset="100%" stop-color="#00d4ff"/>
+                        </linearGradient>
+                    </defs>
+                    <circle cx="32" cy="32" r="30" fill="url(#badgeGrad)" />
+                    <g fill="#08122b">
+                        <circle cx="22" cy="22" r="4" />
+                        <circle cx="42" cy="22" r="4" />
+                        <circle cx="22" cy="32" r="4" />
+                        <circle cx="32" cy="32" r="4" />
+                        <circle cx="42" cy="32" r="4" />
+                        <circle cx="22" cy="42" r="4" />
+                        <circle cx="42" cy="42" r="4" />
+                    </g>
+                </svg>
             </div>
-            <div class="field">
-                <label>Board Variant</label>
-                <div class="seg" id="seg-variant">
-                    <button data-variant="CLASSIC" class="active">Classic</button>
-                    <button data-variant="POWERUP">Power-Up</button>
-                    <button data-variant="CHAOS">Chaos</button>
-                    <button data-variant="SPEED">Speed</button>
-                </div>
-                <p id="variant-desc" class="hint">Classic board with standard snakes and ladders.</p>
+
+            <!-- Title -->
+            <div class="setup-title-block">
+                <h1 class="setup-title">Snakes & Ladders 3D</h1>
+                <p class="setup-subtitle">ARENA EDITION</p>
             </div>
-            <div id="room-field" class="field hidden">
-                <label>Room Code</label>
-                <div class="room-row">
-                    <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="off" />
-                    <button id="btn-join-room" class="primary">Join</button>
-                </div>
-                <p class="hint">Enter a room code to join. Leave empty to create a new room.</p>
-            </div>
-            <div class="field">
-                <label>Players</label>
-                <div id="db-players" class="player-chips"></div>
-                <div class="add-player-row">
-                    <div class="search-wrapper">
-                        <input id="input-new-player" type="text" maxlength="18" placeholder="Search players..." autocomplete="off" />
-                        <div id="search-results" class="search-results hidden"></div>
+
+            <!-- Glass Settings Card -->
+            <div class="setup-fields">
+                <!-- PLAYER SECTION -->
+                <div class="setup-section" id="field-player">
+                    <div class="section-header">PLAYER</div>
+                    <div class="field">
+                        <label for="input-name">Your Name</label>
+                        <input id="input-name" type="text" maxlength="18" placeholder="Enter your name" autocomplete="off" />
                     </div>
                 </div>
-                <p class="hint">Search and select players from the database. Minimum 2 required.</p>
+
+                <!-- MODE SECTION -->
+                <div class="setup-section" id="field-mode">
+                    <div class="section-header">MODE</div>
+                    <div class="field">
+                        <div class="seg" id="seg-mode" role="radiogroup" aria-label="Game mode">
+                            <button data-mode="VS_AI" role="radio" aria-checked="false">VS AI</button>
+                            <button data-mode="LOCAL" class="active" role="radio" aria-checked="true">Local</button>
+                            <button data-mode="ONLINE" role="radio" aria-checked="false">Online</button>
+                        </div>
+                        <p id="mode-desc" class="hint">Play against computer opponent.</p>
+                    </div>
+                </div>
+
+                <!-- VARIANT SECTION -->
+                <div class="setup-section" id="field-variant">
+                    <div class="section-header">VARIANT</div>
+                    <div class="field">
+                        <div class="seg" id="seg-variant" role="radiogroup" aria-label="Board variant">
+                            <button data-variant="CLASSIC" class="active" role="radio" aria-checked="true">Classic</button>
+                            <button data-variant="POWERUP" role="radio" aria-checked="false">Power-Up</button>
+                            <button data-variant="CHAOS" role="radio" aria-checked="false">Chaos</button>
+                            <button data-variant="SPEED" role="radio" aria-checked="false">Speed</button>
+                        </div>
+                        <p id="variant-desc" class="hint">Classic board with standard snakes and ladders.</p>
+                    </div>
+                </div>
+
+                <!-- DIFFICULTY SECTION (shown for VS_AI) -->
+                <div class="setup-section hidden" id="field-difficulty">
+                    <div class="section-header">DIFFICULTY</div>
+                    <div class="field">
+                        <div class="seg" id="seg-difficulty" role="radiogroup" aria-label="AI difficulty">
+                            <button data-diff="EASY" class="active" role="radio" aria-checked="true">Easy</button>
+                            <button data-diff="SMART" role="radio" aria-checked="false">Smart</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOCAL COUNT SECTION (shown for LOCAL) -->
+                <div class="setup-section hidden" id="field-local-count">
+                    <div class="section-header">PLAYERS</div>
+                    <div class="field">
+                        <label id="local-count-label" for="input-local-count">Number of Players</label>
+                        <div class="count-row">
+                            <input id="input-local-count" type="range" min="2" max="4" value="2" />
+                            <output id="local-count-value" for="input-local-count">2</output>
+                        </div>
+                    </div>
+                    <div class="field" id="local-names">
+                        <label>Player Names</label>
+                        <div class="player-name-inputs"></div>
+                    </div>
+                </div>
+
+                <!-- ROOM SECTION (shown for ONLINE) -->
+                <div class="setup-section hidden" id="field-room">
+                    <div class="section-header">ROOM</div>
+                    <div class="field">
+                        <label for="input-room">Room Code</label>
+                        <div class="room-row">
+                            <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="off" />
+                        </div>
+                        <p class="hint">Enter a room code to join. Leave empty to create a new room.</p>
+                    </div>
+                </div>
+
+                <!-- ERROR DISPLAY -->
+                <div id="setup-error" class="setup-error" aria-live="polite"></div>
+
+                <!-- PRIMARY ACTION -->
+                <button id="btn-start" class="primary big" type="button">Start Game</button>
+
+                <!-- SECONDARY ACTIONS GRID -->
+                <div class="setup-secondary" role="group" aria-label="Secondary actions">
+                    <button id="btn-create-room" class="secondary" type="button">
+                        <span class="btn-icon">➕</span>
+                        <span>Create Room</span>
+                    </button>
+                    <button id="btn-join-room" class="secondary" type="button">
+                        <span class="btn-icon">🔗</span>
+                        <span>Join with Code</span>
+                    </button>
+                    <button id="btn-leaderboard" class="secondary" type="button">
+                        <span class="btn-icon">🏆</span>
+                        <span>Leaderboard</span>
+                    </button>
+                </div>
             </div>
-            <div id="setup-error" class="setup-error"></div>
-            <button id="btn-start" class="primary big">Start Game</button>
         </div>
     </div>
 

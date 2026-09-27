@@ -21,7 +21,7 @@
         busy: false, lastState: null,
         built: false, builtCode: null, builtSize: 0,
         soundOn: true, audio: null,
-        config: { variant: "CLASSIC", localCount: 2, localNames: [], mode: "LOCAL" },
+        config: { variant: "CLASSIC", difficulty: "EASY", localCount: 2, localNames: [], mode: "LOCAL" },
         engine: null, stateQueue: null,
         local: false, // true only for LOCAL multiplayer (keyboard roll mapping applies)
         online: false, // true only for ONLINE (server-authoritative) mode
@@ -645,11 +645,11 @@
     async function startGame() {
         ensureAudio();
         const cfg = G.config;
-        const selected = Array.from(document.querySelectorAll(".player-chip.selected")).map(el => el.dataset.name);
+        const selected = collectSelectedNames();
 
         const mode = G.config.mode || "LOCAL";
         if (mode === "ONLINE") {
-            if (selected.length < 1) { toast("Select at least 1 player"); return; }
+            if (selected.length < 1) { toast("Enter your name"); return; }
             await startOnlineGame(cfg, selected);
             return;
         }
@@ -661,9 +661,9 @@
         G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false; G.code = "LOCAL";
         G.local = true;
         G.myName = selected[0]; // Track the first player as "me"
-        const players = selected.map((n, i) => ({ name: n, ai: false, color: PALETTE[i % PALETTE.length] }));
+        const players = selected.map((n, i) => ({ name: n, ai: (mode === "VS_AI" && i > 0), color: PALETTE[i % PALETTE.length] }));
         G.engine = new LocalEngine();
-        const st = G.engine.create({ mode: "LOCAL", variant: cfg.variant, difficulty: "EASY", players });
+        const st = G.engine.create({ mode: "LOCAL", variant: cfg.variant, difficulty: cfg.difficulty || "EASY", players });
         $("setup-modal").classList.add("hidden");
         applyState(st, false);
         scheduleNext(st);
@@ -809,16 +809,114 @@
         if (!desc) return;
         if (G.config.mode === "ONLINE") {
             desc.textContent = "Play online with friends. Connect via room code or QR.";
+        } else if (G.config.mode === "VS_AI") {
+            desc.textContent = "Play against computer opponent.";
         } else {
             desc.textContent = "Local multiplayer on one device.";
         }
     }
 
     function updateRoomFieldVisibility() {
-        const field = $("room-field");
+        const field = $("field-room");
         if (!field) return;
         if (G.config.mode === "ONLINE") field.classList.remove("hidden");
         else field.classList.add("hidden");
+    }
+
+    /* Select a mode programmatically, keeping #seg-mode and the config in sync. */
+    function selectSetupMode(mode) {
+        const seg = $("seg-mode");
+        if (seg) {
+            seg.querySelectorAll("button").forEach(b => {
+                const on = b.dataset.mode === mode;
+                b.classList.toggle("active", on);
+                b.setAttribute("aria-checked", on ? "true" : "false");
+            });
+        }
+        G.config.mode = mode;
+        updateModeDesc();
+        refreshSetupFields();
+    }
+
+    function refreshSetupFields() {
+        const mode = G.config.mode;
+        const diffField = $("field-difficulty");
+        const localField = $("field-local-count");
+        const roomField = $("field-room");
+        const playerField = $("field-player");
+
+        if (diffField) {
+            if (mode === "VS_AI") diffField.classList.remove("hidden");
+            else diffField.classList.add("hidden");
+        }
+        if (localField) {
+            if (mode === "LOCAL") localField.classList.remove("hidden");
+            else localField.classList.add("hidden");
+        }
+        if (roomField) {
+            if (mode === "ONLINE") roomField.classList.remove("hidden");
+            else roomField.classList.add("hidden");
+        }
+        if (playerField) {
+            playerField.classList.remove("hidden");
+        }
+        renderLocalNames();
+    }
+
+    function renderLocalNames() {
+        const container = $("local-names");
+        const countInput = $("input-local-count");
+        const label = $("local-count-label");
+        const valueOut = $("local-count-value");
+        if (!container || !countInput) return;
+
+        const count = parseInt(countInput.value, 10) || 2;
+        if (label) label.textContent = "Number of Players";
+        if (valueOut) valueOut.textContent = count;
+
+        const currentInputs = container.querySelectorAll("input");
+        const currentNames = Array.from(currentInputs).map(i => i.value.trim());
+
+        container.innerHTML = "";
+        for (let i = 0; i < count; i++) {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.maxLength = 18;
+            input.placeholder = `Player ${i + 1} name`;
+            input.autocomplete = "off";
+            input.value = currentNames[i] || (i === 0 ? ($("input-name")?.value?.trim() || "") : "");
+            container.appendChild(input);
+        }
+    }
+
+    function collectSelectedNames() {
+        const mode = G.config.mode;
+        const names = [];
+
+        const myName = $("input-name")?.value?.trim();
+        if (myName) names.push(myName);
+
+        if (mode === "LOCAL") {
+            const inputs = $("local-names")?.querySelectorAll("input");
+            if (inputs) {
+                inputs.forEach((input, idx) => {
+                    if (idx === 0) return; // skip first, already added from myName
+                    const val = input.value.trim();
+                    if (val) names.push(val);
+                });
+            }
+            // Fill remaining with defaults if needed
+            const targetCount = parseInt($("input-local-count")?.value || "2", 10);
+            for (let i = names.length; i < targetCount; i++) {
+                names.push(`Player ${i + 1}`);
+            }
+        } else if (mode === "VS_AI") {
+            names.push("AI");
+        } else if (mode === "ONLINE") {
+            // Only my name for online; others join separately
+        }
+
+        return names;
     }
 
     /* ---------------- setup modal UI ---------------- */
@@ -829,12 +927,18 @@
                 b.onclick = () => {
                     $(id).querySelectorAll("button").forEach(x => x.classList.remove("active"));
                     b.classList.add("active");
-                    G.config[key] = b.dataset[key.split("-")[0]] || b.dataset.variant || b.dataset.diff;
+                    const dataKey = key === "mode" ? "mode" : (key === "difficulty" ? "diff" : "variant");
+                    G.config[key] = b.dataset[dataKey];
                     if (key === "variant" && desc) desc.textContent = VARIANT_DESCS[G.config.variant] || "";
+                    if (key === "mode") {
+                        updateModeDesc();
+                        refreshSetupFields();
+                    }
                 };
             });
         };
         seg("seg-variant", "variant");
+        seg("seg-difficulty", "difficulty");
         if (desc) desc.textContent = VARIANT_DESCS[G.config.variant] || "";
 
         const modeBtns = $("seg-mode");
@@ -845,176 +949,66 @@
                     b.classList.add("active");
                     G.config.mode = b.dataset.mode;
                     updateModeDesc();
-                    updateRoomFieldVisibility();
+                    refreshSetupFields();
                 };
             });
             updateModeDesc();
-            updateRoomFieldVisibility();
+            refreshSetupFields();
         }
 
-        const chips = $("db-players");
-        const nameInput = $("input-new-player");
-        const searchResults = $("search-results");
-        let searchDebounce = null;
-
-        async function loadPlayers() {
-            try {
-                const list = await G.api.getPlayers();
-                G.allPlayers = list.map(p => p.username);
-                // Chips container starts empty - only selected players become chips
-                chips.innerHTML = "";
-            } catch (e) {
-                G.allPlayers = [];
-                chips.innerHTML = "<span style='font-size:11px;color:var(--muted)'>Could not load players</span>";
-            }
-        }
-
-        function renderSearchResults(results, query) {
-            searchResults.innerHTML = "";
-            const trimmedQuery = query.trim();
-            if (!trimmedQuery) {
-                searchResults.classList.add("hidden");
-                return;
-            }
-
-            // Check if there's an exact match in results
-            const exactMatch = results && results.some(p => p.username.toLowerCase() === trimmedQuery.toLowerCase());
-            const hasResults = results && results.length > 0;
-
-            // If no exact match, add "Use as new name" option at the top
-            if (!exactMatch && trimmedQuery) {
-                const newNameItem = document.createElement("div");
-                newNameItem.className = "search-result-item search-result-new";
-                newNameItem.innerHTML = `<span class="new-name-icon">+</span> Use "${trimmedQuery}" as a new name`;
-                newNameItem.onclick = () => selectName(trimmedQuery);
-                searchResults.appendChild(newNameItem);
-            }
-
-            // Add matching results
-            if (hasResults) {
-                results.forEach(p => {
-                    // Skip exact match since we already have the "Use as new name" option
-                    if (p.username.toLowerCase() === trimmedQuery.toLowerCase()) return;
-                    const item = document.createElement("div");
-                    item.className = "search-result-item";
-                    item.textContent = p.username;
-                    item.onclick = () => selectName(p.username);
-                    searchResults.appendChild(item);
-                });
-            }
-
-            searchResults.classList.remove("hidden");
-        }
-
-        function selectName(name) {
-            const trimmedName = name.trim();
-            if (!trimmedName) return;
-
-            // Check if already selected
-            const alreadySelected = chips.querySelector(`.player-chip[data-name="${trimmedName}"].selected`);
-            if (alreadySelected) {
-                toast("Already selected");
-                return;
-            }
-            // Enforce max 4 players
-            const selectedCount = chips.querySelectorAll(".player-chip.selected").length;
-            if (selectedCount >= 4) {
-                toast("Maximum 4 players allowed");
-                return;
-            }
-            // Select the chip if it exists
-            const existingChip = chips.querySelector(`.player-chip[data-name="${trimmedName}"]`);
-            if (existingChip) {
-                existingChip.classList.add("selected");
-            } else {
-                // Create a new chip for this name
-                const chip = document.createElement("div");
-                chip.className = "player-chip selected";
-                chip.dataset.name = trimmedName;
-                const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = PALETTE[selectedCount % PALETTE.length];
-                chip.appendChild(dot);
-                chip.appendChild(document.createTextNode(trimmedName));
-                chip.onclick = () => {
-                    chip.classList.toggle("selected");
-                    updateSearchVisibility();
-                };
-                chips.appendChild(chip);
-            }
-            nameInput.value = "";
-            searchResults.classList.add("hidden");
-            updateSearchVisibility();
-        }
-
-        function updateSearchVisibility() {
-            const selectedCount = chips.querySelectorAll(".player-chip.selected").length;
-            const addPlayerRow = document.querySelector(".add-player-row");
-            if (addPlayerRow) {
-                addPlayerRow.style.display = selectedCount >= 4 ? "none" : "block";
-            }
-            // Also update chip click handlers to call updateSearchVisibility on deselect
-            chips.querySelectorAll(".player-chip").forEach(chip => {
-                const originalClick = chip.onclick;
-                chip.onclick = (e) => {
-                    if (originalClick) originalClick.call(chip, e);
-                    updateSearchVisibility();
-                };
-            });
-        }
-
+        // Player name input
+        const nameInput = $("input-name");
         if (nameInput) {
             nameInput.addEventListener("input", () => {
-                clearTimeout(searchDebounce);
-                const query = nameInput.value.trim();
-                if (!query) {
-                    searchResults.classList.add("hidden");
-                    return;
-                }
-                searchDebounce = setTimeout(() => {
-                    // Filter locally from G.allPlayers (case-insensitive substring match)
-                    const filtered = (G.allPlayers || [])
-                        .filter(name => name.toLowerCase().includes(query.toLowerCase()))
-                        .slice(0, 10)
-                        .map(username => ({ username }));
-                    renderSearchResults(filtered, query);
-                }, 150);
-            });
-
-            // Enter key to commit typed name as new
-            nameInput.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    const query = nameInput.value.trim();
-                    if (query) {
-                        selectName(query);
-                    }
-                }
-            });
-
-            // Hide dropdown when clicking outside
-            document.addEventListener("click", (e) => {
-                if (!nameInput.contains(e.target) && !searchResults.contains(e.target)) {
-                    searchResults.classList.add("hidden");
-                }
+                renderLocalNames();
             });
         }
 
-        await loadPlayers();
-        updateSearchVisibility();
+        // Local player count slider
+        const localCountInput = $("input-local-count");
+        if (localCountInput) {
+            localCountInput.addEventListener("input", () => {
+                renderLocalNames();
+            });
+        }
+
+        // Initial render
+        renderLocalNames();
 
         $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();
 
+        // Secondary buttons reuse the existing mode/room logic — no new game rules.
+        if ($("btn-create-room")) {
+            $("btn-create-room").onclick = () => {
+                selectSetupMode("ONLINE");
+                if ($("input-room")) $("input-room").value = "";
+                $("setup-error").textContent = "";
+                startGame();
+            };
+        }
+
         if ($("btn-join-room")) {
             $("btn-join-room").onclick = () => {
-                const code = $("input-room").value.trim().toUpperCase();
+                selectSetupMode("ONLINE");
+                const code = $("input-room") ? $("input-room").value.trim().toUpperCase() : "";
                 if (!/^\d{6}$/.test(code)) {
                     $("setup-error").textContent = "Enter a valid 6-digit room code";
+                    if ($("input-room")) $("input-room").focus();
                     return;
                 }
                 $("setup-error").textContent = "";
                 startGame();
             };
         }
+
+        if ($("btn-leaderboard")) {
+            $("btn-leaderboard").onclick = () => {
+                const active = $("leaderboard-panel").querySelector(".lb-tabs button.active");
+                loadLeaderboard(active ? active.dataset.by : "winrate");
+            };
+        }
+
         if ($("btn-close-qr")) {
             $("btn-close-qr").onclick = () => { $("qr-overlay").classList.add("hidden"); };
         }
@@ -1103,7 +1097,7 @@
             }
             G.config.mode = "ONLINE";
             updateModeDesc();
-            updateRoomFieldVisibility();
+            refreshSetupFields();
             if ($("input-room")) $("input-room").value = deepRoom;
         }
     });
