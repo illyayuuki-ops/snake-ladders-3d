@@ -893,8 +893,11 @@
         const mode = G.config.mode;
         const names = [];
 
-        const myName = $("input-name")?.value?.trim();
-        if (myName) names.push(myName);
+        const nameInput = $("input-name");
+        const rawName = nameInput ? nameInput.value.trim() : "";
+        const myName = rawName || "Player 1";
+        if (!rawName && nameInput) nameInput.focus();
+        names.push(myName);
 
         if (mode === "LOCAL") {
             const inputs = $("local-names")?.querySelectorAll("input");
