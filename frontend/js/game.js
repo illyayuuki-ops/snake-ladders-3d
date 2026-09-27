@@ -335,6 +335,7 @@
     }
 
     function afterMove(st) {
+        console.log("[TRACE] afterMove called, status=" + st.status + " cur=" + st.currentPlayerName);
         if (st.boardChanged) G.board.respawnBoard(st);
         G.board.setCurrent(st.currentPlayerName);
         renderState(st);

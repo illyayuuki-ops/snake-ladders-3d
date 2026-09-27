@@ -20,5 +20,6 @@
   "homepage": "https://github.com/illyayuuki-ops/snake-ladders-3d#readme",
   "dependencies": {
     "tailwindcss": "^3.4.17"
-  }
+  },
+  "devDependencies": {}
 }
