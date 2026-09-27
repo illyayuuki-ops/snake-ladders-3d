@@ -922,6 +922,38 @@
         return names;
     }
 
+    async function loadKnownPlayers() {
+        const dl = $("known-players");
+        if (!dl) return;
+        try {
+            const list = await G.api.getPlayers();
+            dl.innerHTML = "";
+            const frag = document.createDocumentFragment();
+            (list || []).forEach(p => {
+                const opt = document.createElement("option");
+                opt.value = p.username;
+                frag.appendChild(opt);
+            });
+            dl.appendChild(frag);
+        } catch (e) {
+            dl.innerHTML = "";
+        }
+    }
+
+    async function lookupPlayer(name) {
+        const hint = $("player-hint");
+        if (!hint) return;
+        hint.textContent = "Searching...";
+        try {
+            const p = await G.api.getPlayerByUsername(name);
+            if (p) {
+                hint.textContent = "Returning player - " + (p.totalGames || 0) + " games, " + (p.totalWins || 0) + " wins";
+            }
+        } catch (e) {
+            hint.textContent = "New player - profile created when you start";
+        }
+    }
+
     /* ---------------- setup modal UI ---------------- */
     async function setupModalWiring() {
         const desc = $("variant-desc");
@@ -965,6 +997,23 @@
             nameInput.addEventListener("input", () => {
                 renderLocalNames();
             });
+            nameInput.addEventListener("change", () => {
+                const val = nameInput.value.trim();
+                if (val) lookupPlayer(val);
+            });
+            nameInput.addEventListener("blur", () => {
+                const val = nameInput.value.trim();
+                if (val) lookupPlayer(val);
+            });
+        }
+
+        // Search button
+        const searchBtn = $("btn-search-player");
+        if (searchBtn) {
+            searchBtn.onclick = () => {
+                const val = nameInput ? nameInput.value.trim() : "";
+                if (val) lookupPlayer(val);
+            };
         }
 
         // Local player count slider
@@ -977,6 +1026,7 @@
 
         // Initial render
         renderLocalNames();
+        loadKnownPlayers();
 
         $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();

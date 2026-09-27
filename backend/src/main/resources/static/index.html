@@ -153,7 +153,12 @@
                     <div class="section-header">PLAYER</div>
                     <div class="field">
                         <label for="input-name">Your Name</label>
-                        <input id="input-name" type="text" maxlength="18" placeholder="Enter your name" autocomplete="off" />
+                        <div class="name-row">
+                            <input id="input-name" list="known-players" type="text" maxlength="18" placeholder="Enter your name" autocomplete="off" />
+                            <datalist id="known-players"></datalist>
+                            <button id="btn-search-player" type="button" class="search-btn" aria-label="Search player">Search</button>
+                        </div>
+                        <p id="player-hint" class="hint"></p>
                     </div>
                 </div>
 
