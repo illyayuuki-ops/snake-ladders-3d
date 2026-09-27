@@ -19,14 +19,14 @@
         board: null, dice: null,
         mode: null, variant: null,
         busy: false, lastState: null,
-        built: false, builtCode: null, builtSize: 0,
+        built: false, builtCode: null, builtSize: 0, builtMap: null, drawnState: null,
         soundOn: true, audio: null,
         config: { variant: "CLASSIC", difficulty: "EASY", localCount: 2, localNames: [], mode: "LOCAL" },
         engine: null, stateQueue: null,
         local: false, // true only for LOCAL multiplayer (keyboard roll mapping applies)
         online: false, // true only for ONLINE (server-authoritative) mode
         // riddle state
-        riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null },
+        riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null, slideState: null },
         // background music state
         bgMusic: { node: null, gain: null, playing: false },
         // online mode state
@@ -262,18 +262,21 @@
         const from = slideEvent.from;
         const snakeHead = slideEvent.path[slideEvent.path.length - 1];
         const snakeTail = slideEvent.to;
+        // The state that produced this slide — afterMove must respawn/settle
+        // against it, not against a newer state that may carry another map.
+        const slideState = G.riddle.slideState || G.lastState;
 
         setTimeout(() => {
             hideRiddleModal();
             if (correct) {
-                G.lastState.players.forEach(p => {
+                slideState.players.forEach(p => {
                     if (p.name === playerName) p.position = snakeHead;
                 });
-                G.lastState.log.push(playerName + " solved a riddle and dodged the snake!");
-                G.board.moveAlong(playerName, slideEvent.path, snakeHead, "CLIMB", () => afterMove(G.lastState));
+                slideState.log.push(playerName + " solved a riddle and dodged the snake!");
+                G.board.moveAlong(playerName, slideEvent.path, snakeHead, "CLIMB", () => afterMove(slideState));
                 return;
             } else {
-                G.board.moveAlong(playerName, slideEvent.path, snakeTail, "SLIDE", () => afterMove(G.lastState));
+                G.board.moveAlong(playerName, slideEvent.path, snakeTail, "SLIDE", () => afterMove(slideState));
                 return;
             }
         }, 1200);
@@ -290,17 +293,59 @@
     }
 
     /* ---------------- board build guard ---------------- */
+    /**
+     * Identity of the drawn connector map. The room code and size are NOT enough:
+     * two consecutive local games share roomCode "LOCAL" and size 100, and a CHAOS
+     * reshuffle keeps both while replacing every snake/ladder. Hash the actual
+     * snakes/ladders/powerups (plus boardSequence) so a changed map is always
+     * treated as a different board.
+     */
+    function boardMapKey(st) {
+        if (!st) return null;
+        try {
+            const norm = (o) => Object.keys(o || {}).sort()
+                .map(k => k + ">" + o[k]).join(",");
+            return (st.boardSequence != null ? "seq" + st.boardSequence + "|" : "")
+                + "L[" + norm(st.ladders) + "]S[" + norm(st.snakes) + "]P[" + norm(st.powerups) + "]";
+        } catch (e) { return null; }
+    }
+
+    /**
+     * Make the rendered board match `st` exactly. Rebuilds whenever the room
+     * code, the size OR the connector map differs from what is currently drawn,
+     * so the renderer can never show another game's (or a pre-reshuffle) map.
+     */
     function ensureBuild(st) {
-        if (!G.built || G.builtCode !== st.roomCode || G.builtSize !== st.size) {
+        if (!st) return;
+        const key = boardMapKey(st);
+        if (!G.built || G.builtCode !== st.roomCode || G.builtSize !== st.size || G.builtMap !== key) {
             G.board.build(st);
-            G.built = true; G.builtCode = st.roomCode; G.builtSize = st.size;
+            markBuilt(st);
         }
+    }
+
+    /** Record that the board on screen now shows `st`'s map (after build/respawnBoard). */
+    function markBuilt(st) {
+        G.built = true; G.builtCode = st.roomCode; G.builtSize = st.size; G.builtMap = boardMapKey(st);
+        G.drawnState = st;
+    }
+
+    /** Full reset of the build guard — used whenever a new game is started. */
+    function resetBuild() {
+        G.built = false; G.builtCode = null; G.builtSize = 0; G.builtMap = null; G.drawnState = null;
     }
 
     /* ---------------- apply a state (animate if it carries a move) ---------------- */
     async function applyState(st, animate) {
         G.lastState = st;
-        ensureBuild(st);
+        // A CHAOS reshuffle ships the NEW map in the very same state that carries
+        // the move, but lastEvent.path was computed on the map that was drawn when
+        // the dice were rolled. So while that move animates, the board on screen
+        // must still be the map that produced the path — re-assert it here (BEFORE
+        // moveAlong) instead of letting the incoming state's map overwrite it, and
+        // swap in the reshuffled map only once the animation ends (afterMove).
+        const animatingPreReshuffleMove = !!(animate && st.lastEvent && st.boardChanged);
+        ensureBuild(animatingPreReshuffleMove ? (G.drawnState || st) : st);
         if (animate && st.lastEvent) {
             if (G.busy) {
                 stateQueue = { st, animate };
@@ -315,6 +360,7 @@
                     const riddle = await fetchRiddle();
                     G.riddle.currentRiddle = riddle;
                     G.riddle.slideEvent = slideEvent;
+                    G.riddle.slideState = st;
                     showRiddleModal(riddle);
                 });
                 return;
@@ -328,7 +374,9 @@
                 G.board.moveAlong(st.lastEvent.player, st.lastEvent.path, st.lastEvent.to, st.lastEvent.kind, () => afterMove(st));
             });
         } else {
-            if (st.boardChanged) G.board.respawnBoard(st);
+            // No move to animate: ensureBuild has already brought the board in line
+            // with this state (a reshuffled map forces a rebuild), so only the pawn
+            // positions need re-syncing here.
             st.players.forEach(p => G.board.placeToken(p.name, p.position, false));
             afterMove(st);
         }
@@ -336,7 +384,10 @@
 
     function afterMove(st) {
         console.log("[TRACE] afterMove called, status=" + st.status + " cur=" + st.currentPlayerName);
-        if (st.boardChanged) G.board.respawnBoard(st);
+        // Safe to swap in a reshuffled (CHAOS) map now: any move carried by this
+        // state has finished animating, so the connectors on screen and the
+        // positions of the pawns describe the same board again.
+        if (st.boardChanged) { G.board.respawnBoard(st); markBuilt(st); }
         G.board.setCurrent(st.currentPlayerName);
         renderState(st);
         G.busy = false;
@@ -659,7 +710,8 @@
         if (G.soundOn) startBgMusic();
         for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
-        G.mode = "LOCAL"; G.variant = cfg.variant; G.built = false; G.code = "LOCAL";
+        G.mode = "LOCAL"; G.variant = cfg.variant; resetBuild();
+        G.code = "LOCAL";
         G.local = true;
         G.myName = selected[0]; // Track the first player as "me"
         const players = selected.map((n, i) => ({ name: n, ai: (mode === "VS_AI" && i > 0), color: PALETTE[i % PALETTE.length] }));
@@ -689,7 +741,7 @@
         } catch (e) {
             G.roomCode = Math.floor(100000 + Math.random() * 900000).toString();
         }
-        G.mode = "ONLINE"; G.variant = G.config.variant; G.built = false;
+        G.mode = "ONLINE"; G.variant = G.config.variant; resetBuild();
         G.isHost = true;
         G.code = G.roomCode;
         G.local = false;
@@ -748,7 +800,7 @@
             return;
         }
         G.roomCode = roomCode;
-        G.mode = "ONLINE"; G.variant = G.config.variant; G.built = false;
+        G.mode = "ONLINE"; G.variant = G.config.variant; resetBuild();
         G.isHost = false;
         G.code = roomCode;
         G.local = false;
@@ -1110,16 +1162,22 @@
 
     function resizeWiring() {
         let t = null;
+        // Always rebuild from the state whose map is on screen (G.drawnState) and
+        // never straight from G.lastState: a resize can land while a move is still
+        // animating, and G.lastState may already carry a reshuffled map that the
+        // in-flight path was not computed on.
+        const rebuild = () => {
+            const st = G.drawnState || G.lastState;
+            if (!st) return;
+            G.board.build(st);
+            markBuilt(st);
+        };
         window.addEventListener("resize", () => {
             clearTimeout(t);
             t = setTimeout(() => {
-                if (G.lastState) {
-                    if (!G.busy) {
-                        G.board.build(G.lastState);
-                    } else {
-                        t = setTimeout(() => { if (G.lastState) G.board.build(G.lastState); }, 1500);
-                    }
-                }
+                if (!G.lastState) return;
+                if (!G.busy) rebuild();
+                else t = setTimeout(rebuild, 1500);
             }, 250);
         });
     }
