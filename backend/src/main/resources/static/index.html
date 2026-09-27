@@ -29,7 +29,27 @@
     <!-- ======================= TOP HUD ======================= -->
     <header id="hud-top" class="glass">
         <div class="brand">
-            <span class="logo"><img src="/images/logo.png" alt="Snakes & Ladders logo" /></span>
+            <span class="logo">
+                <svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#7c5cff"/>
+                            <stop offset="50%" stop-color="#6ea8fe"/>
+                            <stop offset="100%" stop-color="#00d4ff"/>
+                        </linearGradient>
+                    </defs>
+                    <circle cx="32" cy="32" r="30" fill="url(#badgeGrad)" />
+                    <g fill="#08122b">
+                        <circle cx="22" cy="22" r="4" />
+                        <circle cx="42" cy="22" r="4" />
+                        <circle cx="22" cy="32" r="4" />
+                        <circle cx="32" cy="32" r="4" />
+                        <circle cx="42" cy="32" r="4" />
+                        <circle cx="22" cy="42" r="4" />
+                        <circle cx="42" cy="42" r="4" />
+                    </g>
+                </svg>
+            </span>
             <div>
                 <div class="title">Snakes & Ladders <b>3D</b></div>
                 <div class="sub" id="mode-label">Arena Edition</div>
