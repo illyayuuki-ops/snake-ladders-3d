@@ -548,6 +548,35 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
     letter-spacing: 4px;
     font-weight: 600;
 }
+.name-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+.name-row input {
+    flex: 1;
+    width: auto;
+}
+.search-btn {
+    min-width: 44px;
+    border: 1px solid var(--glass-brd);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.search-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text);
+}
+.search-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(110,168,254,0.4);
+}
 
 /* Hints */
 .hint {

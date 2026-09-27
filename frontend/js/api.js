@@ -36,6 +36,7 @@
 
         ensurePlayer(name) { return this.post("/players/ensure", { username: name }); }
         getPlayers() { return this.get("/players"); }
+        getPlayerByUsername(username) { return this.get("/players/username/" + enc(username)); }
         createPlayer(name) { return this.post("/players", { username: name }); }
         recordMatch(username, mode, variant, won, turns, placement) {
             return this.post("/players/record-match", {
