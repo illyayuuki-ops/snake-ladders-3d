@@ -28,7 +28,7 @@
         // riddle state
         riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null, slideState: null },
         // background music state
-        bgMusic: { node: null, gain: null, playing: false },
+        bgMusic: { node: null, gain: null, playing: false, volume: 0.3 },
         // online mode state
         ws: null, roomCode: null, onlinePlayers: [], isHost: false
     };
@@ -79,7 +79,7 @@
         if (!G.soundOn || !G.audio) return;
         const o = G.audio.createOscillator(), g = G.audio.createGain();
         o.type = type || "sine"; o.frequency.value = freq;
-        g.gain.value = vol || 0.06;
+        g.gain.value = (vol || 0.06) * G.bgMusic.volume;
         o.connect(g); g.connect(G.audio.destination);
         const t = G.audio.currentTime;
         o.start(t); g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.15));
@@ -98,7 +98,7 @@
         if (!G.audio) return null;
         const ctx = G.audio;
         const gain = ctx.createGain();
-        gain.gain.value = 0.2;
+        gain.gain.value = 0.2 * G.bgMusic.volume;
         gain.connect(ctx.destination);
 
         // Simple chiptune-style loop: arpeggio + bass
@@ -127,7 +127,7 @@
             const g = ctx.createGain();
             o.type = note.type;
             o.frequency.value = note.freq;
-            g.gain.value = note.vol;
+            g.gain.value = note.vol * G.bgMusic.volume;
             o.connect(g);
             g.connect(gain);
             const startTime = Math.max(nextTime, ctx.currentTime);
@@ -153,7 +153,7 @@
         const audioEl = $("bg-music");
         const source = audioEl && audioEl.querySelector("source[src]");
         if (source) {
-            audioEl.volume = 0.2;
+            audioEl.volume = G.bgMusic.volume;
             audioEl.play().catch((e) => {
                 console.error("[bg-music] HTML audio play failed:", e);
                 // Fallback to procedural if file fails
@@ -185,6 +185,13 @@
             G.bgMusic.gain.disconnect();
             G.bgMusic.gain = null;
         }
+    }
+
+    function setBgMusicVolume(vol) {
+        G.bgMusic.volume = Math.max(0, Math.min(1, vol));
+        const audioEl = $("bg-music");
+        if (audioEl) audioEl.volume = G.bgMusic.volume;
+        if (G.bgMusic.gain) G.bgMusic.gain.gain.value = 0.2 * G.bgMusic.volume;
     }
 
     function toggleBgMusic(on) {
@@ -669,14 +676,11 @@
     }
 
     function updateChatVisibility() {
-        const chatToggle = $("btn-toggle-chat");
         const chatPanel = $("chat-panel");
-        if (!chatToggle || !chatPanel) return;
+        if (!chatPanel) return;
         if (G.mode === "ONLINE") {
-            chatToggle.classList.remove("hidden");
-            // Keep panel state as-is (user can toggle)
+            chatPanel.classList.remove("hidden");
         } else {
-            chatToggle.classList.add("hidden");
             chatPanel.classList.add("hidden");
         }
     }
@@ -971,6 +975,11 @@
             const sender = data.player || "Unknown";
             const text = data.message || "";
             renderChatMessage(sender, text);
+            // Auto-show chat panel when a message arrives (unless user closed it)
+            const chatPanel = $("chat-panel");
+            if (chatPanel && chatPanel.classList.contains("hidden")) {
+                chatPanel.classList.remove("hidden");
+            }
         } else if (type === "INFO") {
             // Informational broadcast — no UI action required.
         }
@@ -1336,25 +1345,102 @@
             };
         });
 
-        $("btn-sound").onclick = () => {
-            G.soundOn = !G.soundOn;
-            $("btn-sound").textContent = G.soundOn ? "🔊" : "🔇";
-            if (G.soundOn) ensureAudio();
-            toggleBgMusic(G.soundOn);
+        /* Sound panel toggle with volume slider */
+        let soundPanel = null;
+        function createSoundPanel() {
+            if (soundPanel) return soundPanel;
+            const panel = document.createElement("div");
+            panel.className = "sound-panel hidden";
+            panel.innerHTML = `
+                <div class="sound-panel-header">
+                    <span class="sound-title">🔊 Audio</span>
+                    <button class="sound-close">✕</button>
+                </div>
+                <div class="sound-row">
+                    <label class="sound-toggle">
+                        <input type="checkbox" id="sound-master" ${G.soundOn ? "checked" : ""}>
+                        <span class="toggle-slider"></span>
+                        <span>Master Sound</span>
+                    </label>
+                </div>
+                <div class="sound-row">
+                    <label>Music Volume</label>
+                    <input type="range" id="music-volume" min="0" max="1" step="0.05" value="${G.bgMusic.volume}">
+                    <output id="music-volume-val">${Math.round(G.bgMusic.volume * 100)}%</output>
+                </div>
+                <div class="sound-row">
+                    <label>SFX Volume</label>
+                    <input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="1">
+                    <output id="sfx-volume-val">100%</output>
+                </div>
+            `;
+            document.body.appendChild(panel);
+            soundPanel = panel;
+
+            // Master toggle
+            const masterCheckbox = panel.querySelector("#sound-master");
+            masterCheckbox.onchange = () => {
+                G.soundOn = masterCheckbox.checked;
+                $("btn-sound").textContent = G.soundOn ? "🔊" : "🔇";
+                if (G.soundOn) { ensureAudio(); if (G.audio.state === "suspended") G.audio.resume(); }
+                toggleBgMusic(G.soundOn);
+            };
+
+            // Music volume
+            const musicVol = panel.querySelector("#music-volume");
+            const musicVolOut = panel.querySelector("#music-volume-val");
+            musicVol.oninput = () => {
+                const v = parseFloat(musicVol.value);
+                setBgMusicVolume(v);
+                musicVolOut.textContent = Math.round(v * 100) + "%";
+            };
+
+            // SFX volume (placeholder for future use)
+            const sfxVol = panel.querySelector("#sfx-volume");
+            const sfxVolOut = panel.querySelector("#sfx-volume-val");
+            sfxVol.oninput = () => {
+                sfxVolOut.textContent = Math.round(parseFloat(sfxVol.value) * 100) + "%";
+            };
+
+            // Close button
+            panel.querySelector(".sound-close").onclick = () => panel.classList.add("hidden");
+
+            // Close on outside click
+            document.addEventListener("click", (e) => {
+                if (!panel.contains(e.target) && e.target !== $("btn-sound")) {
+                    panel.classList.add("hidden");
+                }
+            });
+
+            return panel;
+        }
+
+        $("btn-sound").onclick = (e) => {
+            e.stopPropagation();
+            const panel = createSoundPanel();
+            panel.classList.toggle("hidden");
+            if (!panel.classList.contains("hidden")) {
+                // Position near button
+                const btn = $("btn-sound");
+                const rect = btn.getBoundingClientRect();
+                panel.style.top = (rect.bottom + 8) + "px";
+                panel.style.right = (window.innerWidth - rect.right) + "px";
+                // Update controls to current state
+                panel.querySelector("#sound-master").checked = G.soundOn;
+                panel.querySelector("#music-volume").value = G.bgMusic.volume;
+                panel.querySelector("#music-volume-val").textContent = Math.round(G.bgMusic.volume * 100) + "%";
+            }
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
 
         // Chat wiring
-        const chatToggle = $("btn-toggle-chat");
         const chatPanel = $("chat-panel");
+        const chatClose = $("btn-close-chat");
         const chatInput = $("chat-input");
         const chatSend = $("btn-chat-send");
-        if (chatToggle && chatPanel) {
-            chatToggle.onclick = () => {
-                chatPanel.classList.toggle("hidden");
-                if (!chatPanel.classList.contains("hidden") && chatInput) {
-                    chatInput.focus();
-                }
+        if (chatClose && chatPanel) {
+            chatClose.onclick = () => {
+                chatPanel.classList.add("hidden");
             };
         }
         if (chatSend && chatInput) {

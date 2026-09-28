@@ -89,20 +89,23 @@
         </div>
     </section>
 
-    <!-- ======================= LOG + CHAT ======================= -->
+    <!-- ======================= LOG ======================= -->
     <aside id="log-panel" class="glass">
-        <div class="log-header">
-            <h3>Game Log</h3>
-            <button id="btn-toggle-chat" class="icon-btn" title="Toggle chat" style="font-size: 14px;">💬</button>
-        </div>
-        <div id="chat-panel" class="chat-panel hidden">
-            <ul id="chat-messages" class="chat-messages"></ul>
-            <div class="chat-input-row">
-                <input id="chat-input" type="text" placeholder="Type a message…" maxlength="200" autocomplete="off" />
-                <button id="btn-chat-send" class="icon-btn" title="Send" style="font-size: 14px;">➤</button>
-            </div>
-        </div>
+        <h3>Game Log</h3>
         <ul id="log-list"></ul>
+    </aside>
+
+    <!-- ======================= CHAT (online only) ======================= -->
+    <aside id="chat-panel" class="glass hidden">
+        <div class="chat-header">
+            <h3>Chat</h3>
+            <button id="btn-close-chat" class="icon-btn" title="Close chat" style="font-size: 14px;">✕</button>
+        </div>
+        <ul id="chat-messages" class="chat-messages"></ul>
+        <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="Type a message…" maxlength="200" autocomplete="off" />
+            <button id="btn-chat-send" class="icon-btn" title="Send" style="font-size: 14px;">➤</button>
+        </div>
     </aside>
 
     <!-- ======================= LEADERBOARD ======================= -->
