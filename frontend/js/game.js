@@ -29,6 +29,8 @@
         riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null, slideState: null },
         // background music state
         bgMusic: { node: null, gain: null, playing: false, volume: 0.3 },
+        // SFX volume (independent from music)
+        sfxVolume: 1.0,
         // online mode state
         ws: null, roomCode: null, onlinePlayers: [], isHost: false
     };
@@ -79,7 +81,7 @@
         if (!G.soundOn || !G.audio) return;
         const o = G.audio.createOscillator(), g = G.audio.createGain();
         o.type = type || "sine"; o.frequency.value = freq;
-        g.gain.value = (vol || 0.06) * G.bgMusic.volume;
+        g.gain.value = (vol || 0.06) * G.sfxVolume;
         o.connect(g); g.connect(G.audio.destination);
         const t = G.audio.currentTime;
         o.start(t); g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.15));
@@ -1370,8 +1372,8 @@
                 </div>
                 <div class="sound-row">
                     <label>SFX Volume</label>
-                    <input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="1">
-                    <output id="sfx-volume-val">100%</output>
+                    <input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="${G.sfxVolume}">
+                    <output id="sfx-volume-val">${Math.round(G.sfxVolume * 100)}%</output>
                 </div>
             `;
             document.body.appendChild(panel);
@@ -1395,11 +1397,13 @@
                 musicVolOut.textContent = Math.round(v * 100) + "%";
             };
 
-            // SFX volume (placeholder for future use)
+            // SFX volume
             const sfxVol = panel.querySelector("#sfx-volume");
             const sfxVolOut = panel.querySelector("#sfx-volume-val");
             sfxVol.oninput = () => {
-                sfxVolOut.textContent = Math.round(parseFloat(sfxVol.value) * 100) + "%";
+                const v = parseFloat(sfxVol.value);
+                G.sfxVolume = v;
+                sfxVolOut.textContent = Math.round(v * 100) + "%";
             };
 
             // Close button
@@ -1429,6 +1433,8 @@
                 panel.querySelector("#sound-master").checked = G.soundOn;
                 panel.querySelector("#music-volume").value = G.bgMusic.volume;
                 panel.querySelector("#music-volume-val").textContent = Math.round(G.bgMusic.volume * 100) + "%";
+                panel.querySelector("#sfx-volume").value = G.sfxVolume;
+                panel.querySelector("#sfx-volume-val").textContent = Math.round(G.sfxVolume * 100) + "%";
             }
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
