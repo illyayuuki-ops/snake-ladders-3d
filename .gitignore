@@ -5,6 +5,11 @@ backend/target/
 node_modules/
 dist/
 
+# Flutter/Dart port (not part of web app)
+client/
+server/
+shared/
+
 # Database files
 data/
 backend/data/
