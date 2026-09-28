@@ -2,16 +2,17 @@ package com.arena.snakesladders.dto;
 
 /**
  * Generic outbound WebSocket (STOMP) message.
- * type: STATE | EVENT | ERROR | INFO
+ * type: STATE | EVENT | ERROR | INFO | CHAT
  */
 public class WebSocketOutMessage {
 
-    public enum Type { STATE, EVENT, ERROR, INFO }
+    public enum Type { STATE, EVENT, ERROR, INFO, CHAT }
 
     private Type type;
     private String roomCode;
     private GameStateResponse state;
     private String message;
+    private String player; // for CHAT messages
 
     public static WebSocketOutMessage state(String roomCode, GameStateResponse state) {
         WebSocketOutMessage m = new WebSocketOutMessage();
@@ -33,6 +34,15 @@ public class WebSocketOutMessage {
         WebSocketOutMessage m = new WebSocketOutMessage();
         m.type = Type.INFO;
         m.roomCode = roomCode;
+        m.message = message;
+        return m;
+    }
+
+    public static WebSocketOutMessage chat(String roomCode, String player, String message) {
+        WebSocketOutMessage m = new WebSocketOutMessage();
+        m.type = Type.CHAT;
+        m.roomCode = roomCode;
+        m.player = player;
         m.message = message;
         return m;
     }
@@ -67,5 +77,13 @@ public class WebSocketOutMessage {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(String player) {
+        this.player = player;
     }
 }

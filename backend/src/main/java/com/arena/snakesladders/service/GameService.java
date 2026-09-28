@@ -1,11 +1,13 @@
 package com.arena.snakesladders.service;
 
 import com.arena.snakesladders.dto.GameStateResponse;
+import com.arena.snakesladders.dto.WebSocketOutMessage;
 import com.arena.snakesladders.model.Board;
 import com.arena.snakesladders.model.enums.BoardVariant;
 import com.arena.snakesladders.model.enums.Difficulty;
 import com.arena.snakesladders.model.enums.GameMode;
 import com.arena.snakesladders.model.enums.PowerUpType;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,6 +25,7 @@ public class GameService {
     private static final int MAX_PLAYERS = 4;
 
     private final BoardService boardService;
+    private final SimpMessagingTemplate messagingTemplate;
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
     private final Map<String, GameSession> sessions = new ConcurrentHashMap<>();
     private final Random random = new Random();
@@ -32,8 +35,9 @@ public class GameService {
         return t;
     });
 
-    public GameService(BoardService boardService) {
+    public GameService(BoardService boardService, SimpMessagingTemplate messagingTemplate) {
         this.boardService = boardService;
+        this.messagingTemplate = messagingTemplate;
         // Start the turn timer checker - runs every 5 seconds
         timerExecutor.scheduleAtFixedRate(this::checkTurnTimeouts, 5, 5, TimeUnit.SECONDS);
     }
@@ -50,6 +54,10 @@ public class GameService {
                     session.log.add(current.name + " timed out and forfeits turn!");
                     session.lastEvent = null;
                     session.advanceTurn(); // This resets the timer for the next player
+                    // Broadcast the updated state to all clients in the room
+                    GameStateResponse snapshot = session.snapshotFor(null);
+                    messagingTemplate.convertAndSend("/topic/room/" + session.roomCode,
+                        WebSocketOutMessage.state(session.roomCode, snapshot));
                 }
             }
         }

@@ -46,6 +46,12 @@ public class WebSocketController {
                     break;
                 case CHAT:
                     state = gameService.chat(roomCode, message.getPlayer(), message.getPayload());
+                    // Broadcast the chat message as a separate CHAT envelope for real-time display
+                    String chatText = message.getPayload() == null ? null : String.valueOf(message.getPayload().get("text"));
+                    if (chatText != null && !chatText.isBlank()) {
+                        messagingTemplate.convertAndSend("/topic/room/" + roomCode,
+                            WebSocketOutMessage.chat(roomCode, message.getPlayer(), chatText));
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException("Unsupported room action: " + message.getType());
