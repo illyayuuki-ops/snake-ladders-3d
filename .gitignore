@@ -17,6 +17,9 @@ backend/data/
 .vscode/
 *.iml
 
+# AI tool config (not part of the project)
+.kilo/
+
 # OS cruft
 .DS_Store
 Thumbs.db

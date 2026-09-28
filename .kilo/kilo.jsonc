@@ -1,9 +1,0 @@
-{
-  "$schema": "https://app.kilo.ai/config.json",
-  "mcp": {
-    "agent-platform-mcp": {
-      "type": "remote",
-      "url": "https://aiplatform.googleapis.com/mcp/generate"
-    }
-  }
-}
