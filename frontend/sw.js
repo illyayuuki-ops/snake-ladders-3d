@@ -5,6 +5,12 @@
 const CACHE_VERSION = 'snl3d-v11';
 const CORE_CACHE = CACHE_VERSION + '-core';
 
+// A real, well-formed Response returned whenever a request cannot be
+// satisfied (offline + no cache hit). Returning this instead of
+// undefined / a rejected promise avoids the
+// "Failed to convert value to Response" TypeError in event.respondWith.
+const OFFLINE_RESPONSE = new Response('', { status: 503, statusText: 'Offline' });
+
 const APP_SHELL = [
     '/',
     '/index.html',
@@ -58,15 +64,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Network-only for API and WebSocket endpoints
+    // Network-only for API and WebSocket endpoints.
+    // Always resolve to a valid Response (never a rejected promise).
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) {
         event.respondWith(
-            fetch(event.request).catch(() => new Response('Offline', { status: 503, statusText: 'Offline' }))
+            fetch(event.request).catch(() => OFFLINE_RESPONSE)
         );
         return;
     }
 
-    // Network-first for navigation (HTML pages) — fresh content when online
+    // Network-first for navigation (HTML pages) — fresh content when online.
     if (event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request)
@@ -79,12 +86,16 @@ self.addEventListener('fetch', (event) => {
                     }
                     throw new Error('Network response was not ok');
                 })
-                .catch(() => caches.match(event.request).then(r => r || caches.match('/index.html')))
+                .catch(() => caches.match(event.request)
+                    .then(r => r || caches.match('/index.html'))
+                    .catch(() => OFFLINE_RESPONSE))
         );
         return;
     }
 
-    // Cache-first for everything else (CSS, JS, images, fonts)
+    // Cache-first for everything else (CSS, JS, images, fonts).
+    // When fetch fails AND there is no cache match, return a real Response
+    // (503 Offline) instead of undefined / a rejected promise.
     event.respondWith(
         caches.match(event.request)
             .then((cached) => {
@@ -99,6 +110,6 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 });
             })
-            .catch(() => caches.match(event.request).then(r => r || Response.error()))
+            .catch(() => OFFLINE_RESPONSE)
     );
 });

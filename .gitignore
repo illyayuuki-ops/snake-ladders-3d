@@ -5,6 +5,9 @@ backend/target/
 node_modules/
 dist/
 
+# Generated copy of frontend/ assets (canonical source is frontend/)
+backend/src/main/resources/static/
+
 # Flutter/Dart port (not part of web app)
 client/
 server/
