@@ -2,7 +2,7 @@
    sw.js — Service Worker for Snakes & Ladders 3D (PWA)
    Cache-first for app shell; network-first for /api/* and /ws/*
    ============================================================ */
-const CACHE_VERSION = 'snl3d-v10';
+const CACHE_VERSION = 'snl3d-v11';
 const CORE_CACHE = CACHE_VERSION + '-core';
 
 const APP_SHELL = [
@@ -28,6 +28,7 @@ const APP_SHELL = [
     '/img/pawns/pawn-3.svg',
     '/img/pawns/pawn-4.svg',
     '/images/logo.png',
+    '/favicon.ico',
     '/audio/bg-retro.mp3'
 ];
 
@@ -59,7 +60,9 @@ self.addEventListener('fetch', (event) => {
 
     // Network-only for API and WebSocket endpoints
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) {
-        event.respondWith(fetch(event.request));
+        event.respondWith(
+            fetch(event.request).catch(() => new Response('Offline', { status: 503, statusText: 'Offline' }))
+        );
         return;
     }
 
@@ -76,7 +79,7 @@ self.addEventListener('fetch', (event) => {
                     }
                     throw new Error('Network response was not ok');
                 })
-                .catch(() => caches.match(event.request))
+                .catch(() => caches.match(event.request).then(r => r || caches.match('/index.html')))
         );
         return;
     }
@@ -96,6 +99,6 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 });
             })
-            .catch(() => caches.match(event.request))
+            .catch(() => caches.match(event.request).then(r => r || Response.error()))
     );
 });
