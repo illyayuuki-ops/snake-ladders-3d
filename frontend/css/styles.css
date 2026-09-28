@@ -268,7 +268,18 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 
 /* log */
 #log-panel { position: fixed; right: 12px; top: 84px; width: 250px; max-height: 38vh; padding: 12px 14px; z-index: 15; display: flex; flex-direction: column; }
-#log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.log-header h3 { margin: 0; }
+.chat-panel { border-top: 1px solid var(--glass-brd); padding-top: 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.chat-messages { list-style: none; margin: 0; padding: 0; max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+.chat-messages li { padding: 4px 8px; border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text); animation: fadeIn .3s; line-height: 1.4; }
+.chat-messages li .chat-sender { font-weight: 700; color: var(--accent); margin-right: 6px; }
+.chat-messages li .chat-text { color: var(--text); }
+.chat-input-row { display: flex; gap: 6px; }
+#chat-input { flex: 1; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-family: inherit; border: 1px solid var(--glass-brd); background: rgba(255,255,255,0.04); color: var(--text); }
+#chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,168,254,0.15); }
+#chat-input::placeholder { color: var(--muted); opacity: 0.6; }
+#log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 12px; flex: 1; }
 #log-list li { padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text); animation: fadeIn .3s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to {opacity:1; transform:none;} }
 
@@ -676,6 +687,8 @@ button.primary.big:focus-visible {
 .win-card { text-align: center; padding: 32px 24px; }
 .win-card .trophy { font-size: 64px; animation: victory 1s infinite; }
 #win-sub { color: var(--muted); margin: 10px 0 24px; line-height: 1.7; }
+.win-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.win-actions button { min-width: 140px; }
 
 /* QR Card */
 .qr-card { text-align: center; min-width: 280px; padding: 24px; }

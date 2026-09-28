@@ -32,7 +32,44 @@
         // online mode state
         ws: null, roomCode: null, onlinePlayers: [], isHost: false
     };
+    const LOCAL_SAVE_KEY = "sl3d_local_save";
     let stateQueue = null;
+    let lastCurrentPlayer = null; // Track previous player for pass-and-play toast
+
+    /* ---------------- local persistence ---------------- */
+    function saveLocalGame(st) {
+        if (!st || G.online) return;
+        try {
+            const saveData = {
+                state: st,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(saveData));
+        } catch (e) { /* ignore quota errors */ }
+    }
+
+    function loadLocalGame() {
+        try {
+            const raw = localStorage.getItem(LOCAL_SAVE_KEY);
+            if (!raw) return null;
+            const saveData = JSON.parse(raw);
+            if (!saveData || !saveData.state) return null;
+            const st = saveData.state;
+            // Only restore if game is in progress (not finished)
+            if (st.status === "FINISHED") {
+                clearLocalGame();
+                return null;
+            }
+            return st;
+        } catch (e) {
+            clearLocalGame();
+            return null;
+        }
+    }
+
+    function clearLocalGame() {
+        try { localStorage.removeItem(LOCAL_SAVE_KEY); } catch (e) {}
+    }
 
     /* ---------------- audio ---------------- */
     function ensureAudio() {
@@ -338,6 +375,8 @@
     /* ---------------- apply a state (animate if it carries a move) ---------------- */
     async function applyState(st, animate) {
         G.lastState = st;
+        // Save local game state for LOCAL/VS_AI modes (not online)
+        if (!G.online) saveLocalGame(st);
         // A CHAOS reshuffle ships the NEW map in the very same state that carries
         // the move, but lastEvent.path was computed on the map that was drawn when
         // the dice were rolled. So while that move animates, the board on screen
@@ -398,6 +437,7 @@
             return;
         }
         if (st.status === "FINISHED") {
+            clearLocalGame();
             saveLocalResult(st);
             onWin(st);
             return;
@@ -412,6 +452,13 @@
         }
         const cur = st.players.find(p => p.name === st.currentPlayerName);
         if (!cur) return;
+
+        // Pass-and-play toast for LOCAL mode (not VS_AI, not ONLINE)
+        if (G.local && !G.online && lastCurrentPlayer && lastCurrentPlayer !== cur.name) {
+            toast("Pass to " + cur.name);
+        }
+        lastCurrentPlayer = cur.name;
+
         // ONLINE: the server is authoritative and drives AI turns itself.
         // Never auto-roll client-side in online mode — that would race the server.
         if (G.online) {
@@ -585,6 +632,8 @@
             const li = document.createElement("li"); li.textContent = line; log.appendChild(li);
         });
         log.scrollTop = log.scrollHeight;
+        updateChatVisibility();
+        updateTurnTimer(st);
     }
 
     function renderPowerups(st, cur) {
@@ -592,18 +641,57 @@
         if (!cur || cur.ai) return;
         if (cur.hasDouble) {
             const b = document.createElement("button"); b.className = "pw-btn"; b.textContent = "🎲 Double Roll";
+            b.title = "Double Roll: Roll two dice and move the sum";
             b.onclick = () => usePowerup("DOUBLE"); wrap.appendChild(b);
         }
         if (cur.hasFreeze) {
             const t = currentLeader(st, cur);
             if (t) {
                 const b = document.createElement("button"); b.className = "pw-btn"; b.textContent = "❄️ Freeze " + t.name;
+                b.title = "Freeze: Skip the target player's next turn";
                 b.onclick = () => usePowerup("FREEZE"); wrap.appendChild(b);
             }
         }
         if (cur.shield) {
             const b = document.createElement("button"); b.className = "pw-btn"; b.disabled = true; b.textContent = "🛡 Shield";
+            b.title = "Shield: Protects you from one snake";
             wrap.appendChild(b);
+        }
+    }
+
+    function renderChatMessage(sender, text) {
+        const list = $("chat-messages");
+        if (!list) return;
+        const li = document.createElement("li");
+        li.innerHTML = "<span class='chat-sender'>" + sender + ":</span><span class='chat-text'>" + text + "</span>";
+        list.appendChild(li);
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function updateChatVisibility() {
+        const chatToggle = $("btn-toggle-chat");
+        const chatPanel = $("chat-panel");
+        if (!chatToggle || !chatPanel) return;
+        if (G.mode === "ONLINE") {
+            chatToggle.classList.remove("hidden");
+            // Keep panel state as-is (user can toggle)
+        } else {
+            chatToggle.classList.add("hidden");
+            chatPanel.classList.add("hidden");
+        }
+    }
+
+    function updateTurnTimer(st) {
+        const timerStat = $("turn-timer-stat");
+        const timerEl = $("turn-timer");
+        if (!timerStat || !timerEl) return;
+        if (G.online && st && st.turnTimeRemainingMs != null && st.turnTimeRemainingMs > 0 && st.status === "PLAYING") {
+            timerStat.style.display = "flex";
+            const seconds = Math.ceil(st.turnTimeRemainingMs / 1000);
+            timerEl.textContent = seconds;
+            timerEl.style.color = seconds <= 10 ? "var(--bad)" : "var(--text)";
+        } else {
+            timerStat.style.display = "none";
         }
     }
 
@@ -696,6 +784,8 @@
     /* ---------------- start game ---------------- */
     async function startGame() {
         ensureAudio();
+        clearLocalGame(); // Clear any saved game when starting a new one
+        lastCurrentPlayer = null; // Reset pass-and-play tracker
         const cfg = G.config;
         const selected = collectSelectedNames();
 
@@ -720,6 +810,96 @@
         $("setup-modal").classList.add("hidden");
         applyState(st, false);
         scheduleNext(st);
+    }
+
+    /* ---------------- rematch (restart with same settings) ---------------- */
+    function startRematch() {
+        ensureAudio();
+        lastCurrentPlayer = null; // Reset pass-and-play tracker
+        const st = G.lastState;
+        if (!st) { window.location.reload(); return; }
+        const cfg = G.config;
+        const mode = st.mode || cfg.mode || "LOCAL";
+        const variant = st.variant || cfg.variant || "CLASSIC";
+        const difficulty = st.difficulty || cfg.difficulty || "EASY";
+        const roomCode = st.roomCode;
+        const isOnline = mode === "ONLINE";
+
+        // Collect player names from the finished state
+        const playerNames = st.players.map(p => p.name);
+
+        if (isOnline) {
+            // For online, we need to rejoin/create room with same code if host
+            if (G.isHost && roomCode && roomCode !== "LOCAL") {
+                // Host can start a new game in the same room
+                G.api.sendRoom(roomCode, "START", G.myName, null);
+                toast("Starting rematch…");
+            } else if (!G.isHost && roomCode && roomCode !== "LOCAL") {
+                // Non-host: rejoin the room
+                G.api.sendRoom(roomCode, "JOIN", G.myName, { ai: false });
+                toast("Rejoining for rematch…");
+            } else {
+                // Fallback
+                window.location.reload();
+            }
+            return;
+        }
+
+        // LOCAL / VS_AI rematch
+        if (G.soundOn) startBgMusic();
+        for (const n of playerNames) { try { G.api.ensurePlayer(n); } catch (e) {} }
+
+        G.mode = mode; G.variant = variant; resetBuild();
+        G.code = "LOCAL";
+        G.local = true;
+        G.myName = playerNames[0];
+        const players = playerNames.map((n, i) => ({ name: n, ai: (mode === "VS_AI" && i > 0), color: PALETTE[i % PALETTE.length] }));
+        G.engine = new LocalEngine();
+        const newSt = G.engine.create({ mode: "LOCAL", variant: variant, difficulty: difficulty, players });
+        $("win-overlay").classList.add("hidden");
+        applyState(newSt, false);
+        scheduleNext(newSt);
+    }
+
+    /* ---------------- resume local game ---------------- */
+    function resumeLocalGame(st) {
+        ensureAudio();
+        if (G.soundOn) startBgMusic();
+        const mode = st.mode || "LOCAL";
+        const variant = st.variant || "CLASSIC";
+        const difficulty = st.difficulty || "EASY";
+
+        G.mode = mode; G.variant = variant; resetBuild();
+        G.code = "LOCAL";
+        G.local = true;
+        G.myName = st.players[0]?.name || "Player 1";
+
+        G.engine = new LocalEngine();
+        // Restore the exact state from localStorage
+        G.engine.seats = st.players.map(p => ({
+            name: p.name, ai: p.ai, difficulty: p.difficulty || "EASY", color: p.color,
+            position: p.position, shield: p.shield, doubleAvailable: p.hasDouble,
+            freezeAvailable: p.hasFreeze, pendingDouble: false,
+            frozenTurns: p.frozen, finished: p.finished, placement: p.placement,
+            personalTurns: p.personalTurns
+        }));
+        G.engine.currentIndex = st.currentTurn;
+        G.engine.dice = st.dice;
+        G.engine.turnCount = st.turnCount;
+        G.engine.status = st.status;
+        G.engine.winner = st.winner;
+        G.engine.boardSequence = st.boardSequence;
+        G.engine.boardChanged = st.boardChanged;
+        G.engine.board = { size: st.size, snakes: st.snakes, ladders: st.ladders, powerups: st.powerups };
+        G.engine.log = st.log || [];
+        G.engine.lastEvent = st.lastEvent;
+        G.engine.finishedCount = st.players.filter(p => p.finished).length;
+
+        const restoredState = G.engine.state();
+        $("setup-modal").classList.add("hidden");
+        applyState(restoredState, false);
+        scheduleNext(restoredState);
+        toast("Game resumed!");
     }
 
     /* ---------------- online mode ---------------- */
@@ -772,9 +952,9 @@
     /**
      * WebSocket message handler for inbound broadcasts from /topic/room/{code}.
      * The backend is authoritative: it runs GameSession and broadcasts a single
-     * WebSocketOutMessage envelope ({ type: STATE|ERROR|INFO, roomCode, state, message })
+     * WebSocketOutMessage envelope ({ type: STATE|ERROR|INFO|CHAT, roomCode, state, message })
      * per event. The client is a thin viewer — it never recomputes game state and
-     * never sends STATE itself; all actions (ROLL/USE_POWERUP/JOIN/START) go to the
+     * never sends STATE itself; all actions (ROLL/USE_POWERUP/JOIN/START/CHAT) go to the
      * server, which drives the game and broadcasts the resulting snapshot.
      */
     function onWs(data) {
@@ -786,8 +966,13 @@
             if (st) applyState(st, false);
         } else if (type === "ERROR") {
             toast("Server error: " + (data.message || "unknown"));
+        } else if (type === "CHAT") {
+            // Chat message received
+            const sender = data.player || "Unknown";
+            const text = data.message || "";
+            renderChatMessage(sender, text);
         } else if (type === "INFO") {
-            // Informational broadcast (e.g. chat) — no UI action required.
+            // Informational broadcast — no UI action required.
         }
     }
 
@@ -1081,8 +1266,32 @@
         renderLocalNames();
         loadKnownPlayers();
 
+        // Show/hide Resume button based on saved game
+        const resumeBtn = $("btn-resume");
+        if (resumeBtn) {
+            const saved = loadLocalGame();
+            if (saved) {
+                resumeBtn.classList.remove("hidden");
+            } else {
+                resumeBtn.classList.add("hidden");
+            }
+        }
+
         $("btn-start").onclick = () => { $("setup-error").textContent = ""; startGame(); };
         $("btn-play-again").onclick = () => window.location.reload();
+        $("btn-rematch").onclick = () => startRematch();
+
+        // Resume button
+        if ($("btn-resume")) {
+            $("btn-resume").onclick = () => {
+                const saved = loadLocalGame();
+                if (saved) {
+                    resumeLocalGame(saved);
+                } else {
+                    toast("No saved game to resume");
+                }
+            };
+        }
 
         // Secondary buttons reuse the existing mode/room logic — no new game rules.
         if ($("btn-create-room")) {
@@ -1134,6 +1343,32 @@
             toggleBgMusic(G.soundOn);
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
+
+        // Chat wiring
+        const chatToggle = $("btn-toggle-chat");
+        const chatPanel = $("chat-panel");
+        const chatInput = $("chat-input");
+        const chatSend = $("btn-chat-send");
+        if (chatToggle && chatPanel) {
+            chatToggle.onclick = () => {
+                chatPanel.classList.toggle("hidden");
+                if (!chatPanel.classList.contains("hidden") && chatInput) {
+                    chatInput.focus();
+                }
+            };
+        }
+        if (chatSend && chatInput) {
+            const sendChat = () => {
+                const text = chatInput.value.trim();
+                if (!text || !G.code) return;
+                G.api.sendRoom(G.code, "CHAT", G.myName, { text });
+                chatInput.value = "";
+            };
+            chatSend.onclick = sendChat;
+            chatInput.addEventListener("keydown", e => {
+                if (e.key === "Enter") { e.preventDefault(); sendChat(); }
+            });
+        }
     }
 
     /* ---------------- camera drag / zoom ---------------- */

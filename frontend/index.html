@@ -60,6 +60,7 @@
             <div class="stat"><label>Room</label><span id="room-code">—</span></div>
             <div class="stat"><label>Turn</label><span id="turn-count">0</span></div>
             <div class="stat"><label>Variant</label><span id="variant-label">—</span></div>
+            <div class="stat timer-stat" id="turn-timer-stat" style="display:none;"><label>⏱</label><span id="turn-timer">60</span></div>
         </div>
         <div class="top-actions">
             <button id="btn-sound" class="icon-btn" title="Toggle sound">🔊</button>
@@ -88,9 +89,19 @@
         </div>
     </section>
 
-    <!-- ======================= LOG ======================= -->
+    <!-- ======================= LOG + CHAT ======================= -->
     <aside id="log-panel" class="glass">
-        <h3>Game Log</h3>
+        <div class="log-header">
+            <h3>Game Log</h3>
+            <button id="btn-toggle-chat" class="icon-btn" title="Toggle chat" style="font-size: 14px;">💬</button>
+        </div>
+        <div id="chat-panel" class="chat-panel hidden">
+            <ul id="chat-messages" class="chat-messages"></ul>
+            <div class="chat-input-row">
+                <input id="chat-input" type="text" placeholder="Type a message…" maxlength="200" autocomplete="off" />
+                <button id="btn-chat-send" class="icon-btn" title="Send" style="font-size: 14px;">➤</button>
+            </div>
+        </div>
         <ul id="log-list"></ul>
     </aside>
 
@@ -111,7 +122,10 @@
             <div class="trophy">🏆</div>
             <h2 id="win-title">Winner!</h2>
             <p id="win-sub"></p>
-            <button id="btn-play-again" class="primary">Play Again</button>
+            <div class="win-actions">
+                <button id="btn-rematch" class="primary">Rematch</button>
+                <button id="btn-play-again" class="secondary">Main Menu</button>
+            </div>
         </div>
     </div>
 
@@ -237,6 +251,10 @@
 
                 <!-- SECONDARY ACTIONS GRID -->
                 <div class="setup-secondary" role="group" aria-label="Secondary actions">
+                    <button id="btn-resume" class="secondary hidden" type="button">
+                        <span class="btn-icon">▶</span>
+                        <span>Resume Game</span>
+                    </button>
                     <button id="btn-create-room" class="secondary" type="button">
                         <span class="btn-icon">➕</span>
                         <span>Create Room</span>

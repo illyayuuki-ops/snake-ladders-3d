@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Live, in-memory game session. Holds the board, seats and turn pointer plus the
@@ -38,6 +40,11 @@ public class GameSession {
     public boolean boardChanged = false;
     public final Object lock = new Object();
 
+    // Turn timer (online only)
+    public long turnDeadlineMs = 0;
+    public static final long TURN_DURATION_MS = 60_000; // 60 seconds
+    private ScheduledFuture<?> turnTimerTask;
+
     public GameSession(String roomCode, GameMode mode, BoardVariant variant, Difficulty difficulty) {
         this.roomCode = roomCode;
         this.mode = mode;
@@ -61,16 +68,35 @@ public class GameSession {
         int n = seats.size();
         if (n == 0) {
             currentIndex = 0;
+            turnDeadlineMs = 0;
             return;
         }
         for (int step = 1; step <= n; step++) {
             int idx = (currentIndex + step) % n;
             if (!seats.get(idx).finished) {
                 currentIndex = idx;
+                // Reset turn timer for the new current player
+                turnDeadlineMs = System.currentTimeMillis() + TURN_DURATION_MS;
                 return;
             }
         }
         currentIndex = 0;
+        turnDeadlineMs = System.currentTimeMillis() + TURN_DURATION_MS;
+    }
+
+    /** Cancel any running turn timer task. */
+    public void cancelTurnTimer() {
+        if (turnTimerTask != null) {
+            turnTimerTask.cancel(false);
+            turnTimerTask = null;
+        }
+    }
+
+    /** Get remaining time in milliseconds for the current turn (0 if not playing or no timer). */
+    public long getTurnTimeRemainingMs() {
+        if (status != GameStateResponse.GameStatus.PLAYING || turnDeadlineMs <= 0) return 0;
+        long remaining = turnDeadlineMs - System.currentTimeMillis();
+        return Math.max(0, remaining);
     }
 
     /**
@@ -91,6 +117,7 @@ public class GameSession {
         resp.winner = winner;
         resp.boardSequence = boardSequence;
         resp.boardChanged = boardChanged;
+        resp.turnTimeRemainingMs = getTurnTimeRemainingMs();
 
         resp.snakes = new LinkedHashMap<>(board.getSnakes());
         resp.ladders = new LinkedHashMap<>(board.getLadders());

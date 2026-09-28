@@ -60,6 +60,7 @@ public class GameStateResponse {
     public String winner;
     public int boardSequence;
     public boolean boardChanged;
+    public long turnTimeRemainingMs; // Remaining time for current turn (ms), 0 if not applicable
 
     public Map<Integer, Integer> snakes = new LinkedHashMap<>();
     public Map<Integer, Integer> ladders = new LinkedHashMap<>();

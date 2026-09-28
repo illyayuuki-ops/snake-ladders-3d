@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class GameService {
@@ -23,9 +26,33 @@ public class GameService {
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
     private final Map<String, GameSession> sessions = new ConcurrentHashMap<>();
     private final Random random = new Random();
+    private final ScheduledExecutorService timerExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "turn-timer-checker");
+        t.setDaemon(true);
+        return t;
+    });
 
     public GameService(BoardService boardService) {
         this.boardService = boardService;
+        // Start the turn timer checker - runs every 5 seconds
+        timerExecutor.scheduleAtFixedRate(this::checkTurnTimeouts, 5, 5, TimeUnit.SECONDS);
+    }
+
+    /** Periodically check all active sessions for turn timeouts and auto-advance. */
+    private void checkTurnTimeouts() {
+        long now = System.currentTimeMillis();
+        for (GameSession session : sessions.values()) {
+            synchronized (session.lock) {
+                if (session.status != GameStateResponse.GameStatus.PLAYING) continue;
+                if (session.turnDeadlineMs > 0 && now >= session.turnDeadlineMs) {
+                    // Turn timed out - auto-skip current player
+                    PlayerSeat current = session.current();
+                    session.log.add(current.name + " timed out and forfeits turn!");
+                    session.lastEvent = null;
+                    session.advanceTurn(); // This resets the timer for the next player
+                }
+            }
+        }
     }
 
     public RoomInfo createRoom(String username, String mode, String variant, String difficulty) {
@@ -129,6 +156,8 @@ public class GameService {
             session.boardSequence++;
             session.boardChanged = true;
             session.lastEvent = null;
+            // Initialize turn timer for the first player
+            session.advanceTurn();
             return session.snapshotFor(name);
         }
     }
@@ -143,6 +172,15 @@ public class GameService {
             PlayerSeat seat = requireSeat(session, name);
             if (session.current() != seat) {
                 session.lastEvent = null;
+                return session.snapshotFor(name);
+            }
+
+            // Check for turn timeout before processing
+            long now = System.currentTimeMillis();
+            if (session.turnDeadlineMs > 0 && now >= session.turnDeadlineMs) {
+                session.log.add(seat.name + " timed out and forfeits turn!");
+                session.lastEvent = null;
+                session.advanceTurn();
                 return session.snapshotFor(name);
             }
 
@@ -164,7 +202,7 @@ public class GameService {
         }
     }
 
-    public GameStateResponse usePowerUp(String code, String playerName, Map<String, Object> payload) {
+public GameStateResponse usePowerUp(String code, String playerName, Map<String, Object> payload) {
         String roomCode = normalizeCode(code);
         String name = normalizeName(playerName, "Player");
         GameSession session = requireSession(roomCode);
@@ -176,6 +214,16 @@ public class GameService {
                 session.lastEvent = null;
                 return session.snapshotFor(name);
             }
+
+            // Check for turn timeout before processing
+            long now = System.currentTimeMillis();
+            if (session.turnDeadlineMs > 0 && now >= session.turnDeadlineMs) {
+                session.log.add(seat.name + " timed out and forfeits turn!");
+                session.lastEvent = null;
+                session.advanceTurn();
+                return session.snapshotFor(name);
+            }
+
             if (payload == null) {
                 session.lastEvent = null;
                 return session.snapshotFor(name);
@@ -196,8 +244,8 @@ public class GameService {
             }
 
             String targetName = payload.get("target") == null
-                ? null
-                : String.valueOf(payload.get("target"));
+                    ? null
+                    : String.valueOf(payload.get("target"));
             switch (type) {
                 case SHIELD:
                     if (!seat.shield) {
