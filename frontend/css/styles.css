@@ -58,6 +58,28 @@ button { font-family: inherit; cursor: pointer; }
 }
 #board-wrap.dragging { transition: none; }
 
+/* Elemental board background */
+#board-wrap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateZ(calc(var(--tile) * -0.5));
+    background-image: url('/assets/board-map.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 14px;
+    z-index: -1;
+}
+#board-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateZ(calc(var(--tile) * -0.45));
+    background: linear-gradient(160deg, rgba(11, 16, 32, 0.85), rgba(19, 26, 51, 0.9));
+    border-radius: 14px;
+    z-index: -1;
+}
+
 #board {
     position: absolute; inset: 0;
     transform-style: preserve-3d;
@@ -144,6 +166,13 @@ button { font-family: inherit; cursor: pointer; }
     background-position: center;
     image-rendering: auto;
 }
+
+/* Elemental pawn images per player seat */
+.token.token-1 .pawn { background-image: url('/assets/pawn-1.png'); }
+.token.token-2 .pawn { background-image: url('/assets/pawn-2.png'); }
+.token.token-3 .pawn { background-image: url('/assets/pawn-3.png'); }
+.token.token-4 .pawn { background-image: url('/assets/pawn-4.png'); }
+
 .token .tag {
     position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
     font-size: 9px; font-weight: 700; color: #fff; white-space: nowrap;

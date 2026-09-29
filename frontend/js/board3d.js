@@ -244,8 +244,8 @@
                 stops.forEach(([offset, color]) => g.appendChild(this._svgEl("stop", { offset: offset, "stop-color": color })));
                 defs.appendChild(g);
             };
-            // Enhanced gradients
-            grad("snakeGrad", "1", "1", [["0", "#ff6b6b"], ["0.3", "#ee5a24"], ["0.7", "#c0392b"], ["1", "#8b0000"]]);
+            // Enhanced gradients - fire theme for snakes
+            grad("snakeGrad", "1", "1", [["0", "#ffdd00"], ["0.2", "#ff8800"], ["0.5", "#ff4400"], ["0.8", "#cc0000"], ["1", "#8b0000"]]);
             grad("ladderGrad", "0", "1", [["0", "#ffeaa7"], ["0.5", "#fdcb6e"], ["1", "#e17055"]]);
             grad("tileGlow", "0", "1", [["0", "rgba(255,255,255,0.1)"], ["1", "rgba(255,255,255,0)"]]);
             grad("powerupGlow", "0", "1", [["0", "#ffeaa7"], ["1", "#fdcb6e"]]);
@@ -331,14 +331,19 @@
                 style: "filter: drop-shadow(0 0 6px #ff6b6b);"
             }));
 
-            // Head
-            const head = this._svgEl("g", { class: "snake-head-group" });
-            head.appendChild(this._svgEl("circle", {
-                cx: a.x, cy: a.y, r: this.tile * 0.22,
-                fill: "url(#snakeGrad)", stroke: "#8b0000", "stroke-width": 2
-            }));
+            // Head - use fire snake image anchored at point a (head tile center)
+            const headSize = this.tile * 0.55;
+            const headImg = this._svgEl("image", {
+                href: "/assets/snake-head.png",
+                x: a.x - headSize / 2,
+                y: a.y - headSize / 2,
+                width: headSize,
+                height: headSize,
+                preserveAspectRatio: "xMidYMid meet"
+            });
+            g.appendChild(headImg);
 
-            // Eyes with pupils
+            // Eyes with pupils (positioned relative to head center)
             [[0.09, 0.09], [-0.09, 0.09]].forEach(([ex, ey]) => {
                 const eyeGroup = this._svgEl("g");
                 eyeGroup.appendChild(this._svgEl("circle", {
@@ -349,16 +354,15 @@
                     cx: a.x + px * this.tile * ex, cy: a.y + py * this.tile * ey,
                     r: this.tile * 0.025, fill: "#111", class: "pupil"
                 }));
-                head.appendChild(eyeGroup);
+                g.appendChild(eyeGroup);
             });
 
             // Tongue
-            head.appendChild(this._svgEl("path", {
+            g.appendChild(this._svgEl("path", {
                 d: "M " + a.x + " " + a.y + " l " + (ux * this.tile * 0.25) + " " + (uy * this.tile * 0.25),
                 class: "tongue", "stroke-width": Math.max(2, this.tile * 0.05)
             }));
 
-            g.appendChild(head);
             this.svg.appendChild(g);
         }
 
@@ -373,14 +377,13 @@
 
         _makeToken(name, color, index, total) {
             const el = document.createElement("div");
-            el.className = "token";
+            el.className = "token token-" + (index + 1);
             el.style.setProperty("--c", color || "#ef4444");
             el.style.setProperty("--tile", this.tile + "px");
 
             const pawn = document.createElement("div");
             pawn.className = "pawn";
-            const pawnIdx = (index % 4) + 1;
-            pawn.style.backgroundImage = "url('/img/pawns/pawn-" + pawnIdx + ".svg')";
+            // Pawn image is set via CSS per token-N class
 
             // Add glow ring
             const glow = document.createElement("div");
