@@ -640,15 +640,19 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
     font-variant-numeric: tabular-nums;
 }
 
-/* Player name inputs for local mode — compact inline rows */
+/* Player name inputs for local mode — compact inline rows.
+   renderLocalNames() empties #local-names and appends the inputs directly,
+   dropping the .player-name-inputs wrapper from the markup, so the compact
+   grid has to live on #local-names itself. Both DOM shapes are covered. */
+#local-names,
 #local-names .player-name-inputs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     margin-top: 6px;
 }
-#local-names .field { margin-bottom: 0; }
-.player-name-inputs input {
+#local-names input,
+#local-names .player-name-inputs input {
     width: 100%;
     min-width: 0;
     border-radius: 8px;
@@ -660,12 +664,14 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
     color: var(--text);
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
-.player-name-inputs input:focus {
+#local-names input:focus,
+#local-names .player-name-inputs input:focus {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(110,168,254,0.15);
 }
-.player-name-inputs input::placeholder { color: var(--muted); opacity: 0.6; }
+#local-names input::placeholder,
+#local-names .player-name-inputs input::placeholder { color: var(--muted); opacity: 0.6; }
 
 /* Segments */
 .seg {
@@ -937,8 +943,8 @@ button.primary.big:focus-visible {
     .seg { gap: 5px; }
     .seg button { height: 34px; font-size: 12px; padding: 0 4px; }
     .setup-fields input[type="text"] { padding: 7px 10px; font-size: 13px; }
-    .player-name-inputs input { padding: 6px 8px; font-size: 12px; }
-    #local-names .player-name-inputs { gap: 5px; }
+    #local-names input { padding: 5px 8px; font-size: 12px; }
+    #local-names { gap: 5px; }
     button.primary.big { padding: 11px 14px; font-size: 14px; }
     #setup-modal button.primary.big { padding: 9px 14px; font-size: 13px; }
     .setup-actions #btn-start { padding: 9px 16px; font-size: 13px; }
