@@ -97,7 +97,7 @@
     class Board3D {
         constructor(boardEl) {
             this.el = boardEl;
-            this.tile = 60;
+            this.tile = 68;
             this.size = 100;
             this.rows = 10;
             this.tokens = {};
@@ -105,7 +105,20 @@
             this.tiltX = 58; this.tiltY = 0; this.zoom = 1;
             this.particles = new ParticleSystem(boardEl);
             this.theme = "classic"; // classic, neon, dark, pastel
+            this._lastState = null;
             this._applyCamera();
+            // The board is sized against the viewport and the fixed HUD panels, so a
+            // resize has to refit and re-place tiles/pawns instead of leaving the old
+            // (possibly overlapping) geometry on screen. Debounced: dragging a window
+            // edge fires this continuously.
+            this._onResize = () => {
+                clearTimeout(this._resizeTimer);
+                this._resizeTimer = setTimeout(() => {
+                    if (this._lastState) this.build(this._lastState);
+                }, 150);
+            };
+            window.addEventListener("resize", this._onResize);
+            window.addEventListener("orientationchange", this._onResize);
         }
 
         /* ---------- camera ---------- */
@@ -128,20 +141,49 @@
         _fit(viewW, viewH) {
             const hudTop = viewW <= 680 ? 52 : 84;
             const controlsH = viewW <= 680 ? 60 : 80;
-            const pad = 24;
-            const availW = viewW - pad;
+            const pad = 16;
+            // The HUD panels are fixed overlays pinned to the screen edges, so the
+            // board must be sized to clear them instead of growing underneath.
+            // The board is centred, so both sides reserve the wider gutter.
+            const gutter = (sel) => {
+                const el = document.querySelector(sel);
+                if (!el) return 0;
+                const cs = getComputedStyle(el);
+                if (cs.display === "none" || cs.visibility === "hidden") return 0;
+                const w = el.getBoundingClientRect().width;
+                return w > 0 ? w + 24 : 0; // + breathing room between panel and board
+            };
+            const gutterL = gutter("#players-panel");
+            const gutterR = Math.max(gutter("#log-panel"), gutter("#leaderboard-panel"));
+            const sideGutter = Math.max(gutterL, gutterR);
+            const availW = viewW - sideGutter * 2 - pad * 2;
             const availH = viewH - hudTop - controlsH - pad;
             const rows = Math.max(1, this.rows);
             const maxByW = availW / COLS;
             const maxByH = availH / rows;
-            const maxTile = Math.min(maxByW, maxByH, 110);
-            this.tile = Math.floor(maxTile);
-            const w = this.tile * COLS;
-            const h = this.tile * this.rows;
+            const maxTile = Math.min(maxByW, maxByH, 120);
+            this.tile = Math.max(24, Math.floor(maxTile));
+
             const root = this.el.parentElement;
-            root.style.setProperty("--board-w", w + "px");
-            root.style.setProperty("--board-h", h + "px");
-            root.style.setProperty("--tile", this.tile + "px");
+            const apply = (t) => {
+                this.tile = t;
+                root.style.setProperty("--board-w", (t * COLS) + "px");
+                root.style.setProperty("--board-h", (t * this.rows) + "px");
+                root.style.setProperty("--tile", t + "px");
+            };
+            apply(this.tile);
+
+            // The board is drawn in perspective, so the near edge is magnified and the
+            // on-screen footprint is WIDER than tile * COLS. Sizing off the untransformed
+            // box lets the corners slide under the side panels, so measure the projected
+            // rect and scale down until it clears the gutters. Two or three passes converge.
+            const allowedW = viewW - sideGutter * 2;
+            for (let i = 0; i < 3; i++) {
+                const rect = root.getBoundingClientRect();
+                const projected = rect.width;
+                if (!projected || projected <= allowedW) break;
+                apply(Math.max(24, Math.floor(this.tile * (allowedW / projected))));
+            }
         }
 
         tilePos(t) {
@@ -163,6 +205,7 @@
         build(state) {
             this.size = state.size || 100;
             this.rows = Math.ceil(this.size / COLS);
+            this._lastState = state;
             this._fit(window.innerWidth, window.innerHeight);
             this.el.innerHTML = "";
             this.tokens = {}; this.colorOf = {};

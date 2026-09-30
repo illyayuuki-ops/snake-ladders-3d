@@ -26,7 +26,7 @@
         local: false, // true only for LOCAL multiplayer (keyboard roll mapping applies)
         online: false, // true only for ONLINE (server-authoritative) mode
         // riddle state
-        riddle: { active: false, resolve: null, reject: null, timer: null, timeLeft: 15, currentRiddle: null, slideEvent: null, slideState: null },
+        riddle: { active: false, resolve: null, reject: null, timer: null, outcomeTimer: null, resolved: false, timeLeft: 15, currentRiddle: null, slideEvent: null, slideState: null },
         // background music state
         bgMusic: { node: null, gain: null, playing: false, volume: 0.3 },
         // SFX volume (independent from music)
@@ -202,6 +202,12 @@
 
     /* ---------------- riddle handling ---------------- */
     function fetchRiddle() {
+        // riddles.js is an optional enhancement: it is a separate script tag and can
+        // fail to load (offline first run, stale service-worker cache). Never let a
+        // missing pool throw inside the move pipeline — resolve null instead and let
+        // the caller fall back to applying the slide directly.
+        const hasPool = (typeof Riddles !== "undefined") && typeof Riddles.pickRandom === "function";
+        if (!hasPool) return Promise.resolve(null);
         if (G.mode === "LOCAL") return Promise.resolve(Riddles.pickRandom());
         return G.api.riddle().catch(() => Riddles.pickRandom());
     }
@@ -266,6 +272,11 @@
             }
         }, 1000);
 
+        // Fresh round: the button submits an answer until one is accepted, then
+        // becomes the Continue button that applies the outcome.
+        G.riddle.resolved = false;
+        submitBtn.textContent = "Submit";
+        submitBtn.disabled = false;
         submitBtn.onclick = () => {
             const answer = inputEl.value.trim();
             if (!answer) {
@@ -285,10 +296,18 @@
             clearInterval(G.riddle.timer);
             G.riddle.timer = null;
         }
+        if (G.riddle.outcomeTimer) {
+            clearTimeout(G.riddle.outcomeTimer);
+            G.riddle.outcomeTimer = null;
+        }
     }
 
     function handleRiddleAnswer(correct, userAnswer) {
+        if (G.riddle.resolved) return; // ignore double submits / timer racing a click
+        G.riddle.resolved = true;
+
         const feedbackEl = $("riddle-feedback");
+        const submitBtn = $("riddle-submit");
         if (correct) {
             feedbackEl.textContent = "✓ Correct! You dodged the snake!";
             feedbackEl.className = "riddle-feedback success";
@@ -305,14 +324,14 @@
 
         const slideEvent = G.riddle.slideEvent;
         const playerName = slideEvent.player;
-        const from = slideEvent.from;
         const snakeHead = slideEvent.path[slideEvent.path.length - 1];
         const snakeTail = slideEvent.to;
         // The state that produced this slide — afterMove must respawn/settle
         // against it, not against a newer state that may carry another map.
         const slideState = G.riddle.slideState || G.lastState;
 
-        setTimeout(() => {
+        const applyOutcome = () => {
+            if (G.riddle.outcomeTimer) { clearTimeout(G.riddle.outcomeTimer); G.riddle.outcomeTimer = null; }
             hideRiddleModal();
             if (correct) {
                 slideState.players.forEach(p => {
@@ -320,12 +339,17 @@
                 });
                 slideState.log.push(playerName + " solved a riddle and dodged the snake!");
                 G.board.moveAlong(playerName, slideEvent.path, snakeHead, "CLIMB", () => afterMove(slideState));
-                return;
             } else {
                 G.board.moveAlong(playerName, slideEvent.path, snakeTail, "SLIDE", () => afterMove(slideState));
-                return;
             }
-        }, 1200);
+        };
+
+        // The button turns into Continue so the player can move on as soon as they
+        // have read the result; the timeout closes it for anyone who doesn't.
+        submitBtn.textContent = "Continue";
+        submitBtn.disabled = false;
+        submitBtn.onclick = applyOutcome;
+        G.riddle.outcomeTimer = setTimeout(applyOutcome, 2500);
     }
 
     /* ---------------- toast / status ---------------- */
@@ -406,6 +430,11 @@
                 G.dice.roll(st.dice, async () => {
                     const slideEvent = st.lastEvent;
                     const riddle = await fetchRiddle();
+                    if (!riddle) {
+                        // No riddle pool available — the snake still bites.
+                        G.board.moveAlong(slideEvent.player, slideEvent.path, slideEvent.to, "SLIDE", () => afterMove(st));
+                        return;
+                    }
                     G.riddle.currentRiddle = riddle;
                     G.riddle.slideEvent = slideEvent;
                     G.riddle.slideState = st;
