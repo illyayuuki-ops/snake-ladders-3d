@@ -135,81 +135,51 @@
     <!-- ======================= SETUP MODAL ======================= -->
     <div id="setup-modal" class="overlay">
         <div class="setup-card glass">
-            <!-- Dice/Logo Badge -->
-            <div class="setup-badge" aria-hidden="true">
-                <svg viewBox="0 0 64 64" width="80" height="80" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#7c5cff"/>
-                            <stop offset="50%" stop-color="#6ea8fe"/>
-                            <stop offset="100%" stop-color="#00d4ff"/>
-                        </linearGradient>
-                    </defs>
-                    <circle cx="32" cy="32" r="30" fill="url(#badgeGrad)" />
-                    <g fill="#08122b">
-                        <circle cx="22" cy="22" r="4" />
-                        <circle cx="42" cy="22" r="4" />
-                        <circle cx="22" cy="32" r="4" />
-                        <circle cx="32" cy="32" r="4" />
-                        <circle cx="42" cy="32" r="4" />
-                        <circle cx="22" cy="42" r="4" />
-                        <circle cx="42" cy="42" r="4" />
-                    </g>
-                </svg>
-            </div>
+            <!-- Header: Title + Close -->
+            <header class="setup-header">
+                <h1 class="setup-title">New Game</h1>
+                <button id="btn-close-setup" class="icon-btn" aria-label="Close setup" title="Cancel">✕</button>
+            </header>
 
-            <!-- Title -->
-            <div class="setup-title-block">
-                <h1 class="setup-title">Snakes & Ladders 3D</h1>
-                <p class="setup-subtitle">ARENA EDITION</p>
-            </div>
-
-            <!-- Glass Settings Card -->
+            <!-- Fields Container -->
             <div class="setup-fields">
-                <!-- PLAYER SECTION -->
+                <!-- YOUR NAME -->
                 <div class="setup-section" id="field-player">
-                    <div class="section-header">PLAYER</div>
                     <div class="field">
                         <label for="input-name">Your Name</label>
                         <div class="name-row">
                             <input id="input-name" list="known-players" type="text" maxlength="18" placeholder="Enter your name" autocomplete="off" />
                             <datalist id="known-players"></datalist>
-                            <button id="btn-search-player" type="button" class="search-btn" aria-label="Search player">Search</button>
+                            <button id="btn-search-player" type="button" class="search-btn" aria-label="Search player" title="Search known players">🔍</button>
                         </div>
-                        <p id="player-hint" class="hint"></p>
                     </div>
                 </div>
 
-                <!-- MODE SECTION -->
+                <!-- MODE -->
                 <div class="setup-section" id="field-mode">
-                    <div class="section-header">MODE</div>
                     <div class="field">
                         <div class="seg" id="seg-mode" role="radiogroup" aria-label="Game mode">
                             <button data-mode="VS_AI" role="radio" aria-checked="false">VS AI</button>
                             <button data-mode="LOCAL" class="active" role="radio" aria-checked="true">Local</button>
                             <button data-mode="ONLINE" role="radio" aria-checked="false">Online</button>
                         </div>
-                        <p id="mode-desc" class="hint">Play against computer opponent.</p>
                     </div>
                 </div>
 
-                <!-- VARIANT SECTION -->
+                <!-- VARIANT (2x2 grid) -->
                 <div class="setup-section" id="field-variant">
-                    <div class="section-header">VARIANT</div>
                     <div class="field">
-                        <div class="seg" id="seg-variant" role="radiogroup" aria-label="Board variant">
+                        <div class="seg seg-2x2" id="seg-variant" role="radiogroup" aria-label="Board variant">
                             <button data-variant="CLASSIC" class="active" role="radio" aria-checked="true">Classic</button>
                             <button data-variant="POWERUP" role="radio" aria-checked="false">Power-Up</button>
                             <button data-variant="CHAOS" role="radio" aria-checked="false">Chaos</button>
                             <button data-variant="SPEED" role="radio" aria-checked="false">Speed</button>
                         </div>
-                        <p id="variant-desc" class="hint">Classic board with standard snakes and ladders.</p>
                     </div>
                 </div>
 
-                <!-- DIFFICULTY SECTION (shown for VS_AI) -->
+                <!-- DIFFICULTY (VS_AI only) -->
                 <div class="setup-section hidden" id="field-difficulty">
-                    <div class="section-header">DIFFICULTY</div>
                     <div class="field">
                         <div class="seg" id="seg-difficulty" role="radiogroup" aria-label="AI difficulty">
                             <button data-diff="EASY" class="active" role="radio" aria-checked="true">Easy</button>
@@ -218,58 +188,37 @@
                     </div>
                 </div>
 
-                <!-- LOCAL COUNT SECTION (shown for LOCAL) -->
+                <!-- LOCAL PLAYER COUNT + NAMES (LOCAL only) -->
                 <div class="setup-section hidden" id="field-local-count">
-                    <div class="section-header">PLAYERS</div>
                     <div class="field">
-                        <label id="local-count-label" for="input-local-count">Number of Players</label>
+                        <label id="local-count-label" for="input-local-count">Players</label>
                         <div class="count-row">
                             <input id="input-local-count" type="range" min="2" max="4" value="2" />
                             <output id="local-count-value" for="input-local-count">2</output>
                         </div>
                     </div>
                     <div class="field" id="local-names">
-                        <label>Player Names</label>
                         <div class="player-name-inputs"></div>
                     </div>
                 </div>
 
-                <!-- ROOM SECTION (shown for ONLINE) -->
+                <!-- ROOM CODE (ONLINE only) -->
                 <div class="setup-section hidden" id="field-room">
-                    <div class="section-header">ROOM</div>
                     <div class="field">
                         <label for="input-room">Room Code</label>
                         <div class="room-row">
-                            <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="off" />
+                            <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code (empty = create room)" autocomplete="off" title="Enter a 6-digit room code to join, or leave empty to create a new room" />
                         </div>
-                        <p class="hint">Enter a room code to join. Leave empty to create a new room.</p>
                     </div>
                 </div>
 
-                <!-- ERROR DISPLAY -->
+                <!-- ERROR DISPLAY (no space when empty) -->
                 <div id="setup-error" class="setup-error" aria-live="polite"></div>
 
-                <!-- PRIMARY ACTION -->
-                <button id="btn-start" class="primary big" type="button">Start Game</button>
-
-                <!-- SECONDARY ACTIONS GRID -->
-                <div class="setup-secondary" role="group" aria-label="Secondary actions">
-                    <button id="btn-resume" class="secondary hidden" type="button">
-                        <span class="btn-icon">▶</span>
-                        <span>Resume Game</span>
-                    </button>
-                    <button id="btn-create-room" class="secondary" type="button">
-                        <span class="btn-icon">➕</span>
-                        <span>Create Room</span>
-                    </button>
-                    <button id="btn-join-room" class="secondary" type="button">
-                        <span class="btn-icon">🔗</span>
-                        <span>Join with Code</span>
-                    </button>
-                    <button id="btn-leaderboard" class="secondary" type="button">
-                        <span class="btn-icon">🏆</span>
-                        <span>Leaderboard</span>
-                    </button>
+                <!-- ACTIONS: Start Game + Cancel -->
+                <div class="setup-actions">
+                    <button id="btn-start" class="primary big" type="button">Start Game</button>
+                    <button id="btn-cancel-setup" class="secondary" type="button">Cancel</button>
                 </div>
             </div>
         </div>

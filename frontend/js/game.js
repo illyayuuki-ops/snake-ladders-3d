@@ -1189,17 +1189,21 @@
         }
     }
 
-    async function lookupPlayer(name) {
-        const hint = $("player-hint");
-        if (!hint) return;
-        hint.textContent = "Searching...";
+    async function lookupPlayer(name, announce) {
+        const input = $("input-name");
+        // No inline hint paragraph in the compact modal: report via tooltip, and
+        // via toast only when explicitly requested (search button), so typing stays quiet.
         try {
             const p = await G.api.getPlayerByUsername(name);
             if (p) {
-                hint.textContent = "Returning player - " + (p.totalGames || 0) + " games, " + (p.totalWins || 0) + " wins";
+                const msg = "Returning player - " + (p.totalGames || 0) + " games, " + (p.totalWins || 0) + " wins";
+                if (input) input.title = msg;
+                if (announce) toast(msg);
             }
         } catch (e) {
-            hint.textContent = "New player - profile created when you start";
+            const msg = "New player - profile created when you start";
+            if (input) input.title = msg;
+            if (announce) toast(msg);
         }
     }
 
@@ -1261,7 +1265,7 @@
         if (searchBtn) {
             searchBtn.onclick = () => {
                 const val = nameInput ? nameInput.value.trim() : "";
-                if (val) lookupPlayer(val);
+                if (val) lookupPlayer(val, true);
             };
         }
 
@@ -1438,6 +1442,16 @@
             }
         };
         $("btn-new").onclick = () => { $("setup-modal").classList.remove("hidden"); };
+
+        // Setup modal dismiss buttons (header × and footer Cancel)
+        const hideSetup = () => {
+            const modal = $("setup-modal");
+            if (modal) modal.classList.add("hidden");
+            const err = $("setup-error");
+            if (err) err.textContent = "";
+        };
+        if ($("btn-close-setup")) $("btn-close-setup").onclick = hideSetup;
+        if ($("btn-cancel-setup")) $("btn-cancel-setup").onclick = hideSetup;
 
         // Chat wiring
         const chatPanel = $("chat-panel");
