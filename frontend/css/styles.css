@@ -455,6 +455,11 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
     top: calc(84px + 60vh + var(--hud-panel-gap) * 2);
 }
 
+/* Leaderboard gap fix: when chat panel is hidden, move leaderboard up */
+#chat-panel.hidden ~ #leaderboard-panel {
+    top: calc(84px + 35vh + var(--hud-panel-gap));
+}
+
 /* log */
 #log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-1); font-size: 12px; flex: 1; }
 #log-list li { padding: var(--sp-1) var(--sp-2); border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text); animation: fadeIn .3s; }
@@ -986,6 +991,7 @@ button.primary.big:focus-visible {
     #log-panel { max-height: 32vh; }
     #chat-panel { top: calc(84px + 32vh + var(--hud-panel-gap)); max-height: 25vh; }
     #leaderboard-panel { top: calc(84px + 57vh + var(--hud-panel-gap) * 2); }
+    #chat-panel.hidden ~ #leaderboard-panel { top: calc(84px + 32vh + var(--hud-panel-gap)); }
 }
 @media (max-width: 1180px) {
     #players-panel { width: 172px; }
@@ -996,6 +1002,7 @@ button.primary.big:focus-visible {
     #log-panel { max-height: 32vh; }
     #chat-panel { top: calc(84px + 32vh + var(--hud-panel-gap)); max-height: 25vh; }
     #leaderboard-panel { top: calc(84px + 57vh + var(--hud-panel-gap) * 2); }
+    #chat-panel.hidden ~ #leaderboard-panel { top: calc(84px + 32vh + var(--hud-panel-gap)); }
 }
 @media (max-width: 480px) {
     .setup-card { width: 100%; max-height: 94vh; border-radius: 14px; }
@@ -1021,6 +1028,7 @@ button.primary.big:focus-visible {
     #log-panel { max-height: 28vh; }
     #chat-panel { top: calc(80px + 28vh + var(--hud-panel-gap)); max-height: 22vh; }
     #leaderboard-panel { top: calc(80px + 50vh + var(--hud-panel-gap) * 2); }
+    #chat-panel.hidden ~ #leaderboard-panel { top: calc(80px + 28vh + var(--hud-panel-gap)); }
     .top-stats { gap: 12px; }
 }
 @media (max-width: 680px) {

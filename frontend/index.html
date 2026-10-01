@@ -205,6 +205,24 @@
                         <div id="qr-scanner-status" class="hint" style="text-align: center; margin-top: 8px;"></div>
                         <button id="btn-stop-qr-scan" type="button" class="secondary" style="margin-top: 8px; width: 100%;">Stop Scanning</button>
                     </div>
+                    <!-- VISIBILITY (ONLINE create) -->
+                    <div class="field" id="field-visibility">
+                        <span class="field-label">Visibility</span>
+                        <div class="seg" id="seg-visibility" role="radiogroup" aria-label="Room visibility">
+                            <button data-visibility="PRIVATE" class="active" role="radio" aria-checked="true">Private</button>
+                            <button data-visibility="PUBLIC" role="radio" aria-checked="false">Public</button>
+                        </div>
+                    </div>
+                    <!-- PUBLIC ROOMS LIST (collapsible) -->
+                    <div class="field" id="field-public-rooms">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <span class="field-label" style="margin-bottom: 0;">Public Rooms</span>
+                            <button id="btn-refresh-lobby" type="button" class="icon-btn" title="Refresh lobby" style="font-size: 14px;">⟳</button>
+                        </div>
+                        <div id="public-rooms-list" style="max-height: 200px; overflow-y: auto; display: none;">
+                            <p class="hint" id="lobby-empty" style="text-align: center; padding: 16px;">No public rooms available. Create one or check back later.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ERROR DISPLAY (no space when empty) -->

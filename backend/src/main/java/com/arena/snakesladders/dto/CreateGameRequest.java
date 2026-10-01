@@ -3,6 +3,7 @@ package com.arena.snakesladders.dto;
 import com.arena.snakesladders.model.enums.BoardVariant;
 import com.arena.snakesladders.model.enums.Difficulty;
 import com.arena.snakesladders.model.enums.GameMode;
+import com.arena.snakesladders.model.enums.Visibility;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -21,6 +22,9 @@ public class CreateGameRequest {
 
     /** For ONLINE rooms, an explicit room code (otherwise one is generated). */
     private String roomCode;
+
+    /** Room visibility for ONLINE mode (default PRIVATE). */
+    private Visibility visibility = Visibility.PRIVATE;
 
     private String hostUsername;
 
@@ -98,6 +102,14 @@ public class CreateGameRequest {
 
     public void setRoomCode(String roomCode) {
         this.roomCode = roomCode;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(Visibility visibility) {
+        this.visibility = visibility;
     }
 
     public String getHostUsername() {

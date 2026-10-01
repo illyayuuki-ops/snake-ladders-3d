@@ -3,6 +3,7 @@ package com.arena.snakesladders.model;
 import com.arena.snakesladders.model.enums.BoardVariant;
 import com.arena.snakesladders.model.enums.Difficulty;
 import com.arena.snakesladders.model.enums.GameMode;
+import com.arena.snakesladders.model.enums.Visibility;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -34,6 +35,10 @@ public class GameRoom {
     @Enumerated(EnumType.STRING)
     @Column(name = "difficulty")
     private Difficulty difficulty;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false)
+    private Visibility visibility = Visibility.PRIVATE;
 
     /** Comma separated list of participant usernames (turn order). */
     @Column(name = "players", length = 512)
@@ -102,6 +107,14 @@ public class GameRoom {
 
     public void setDifficulty(Difficulty difficulty) {
         this.difficulty = difficulty;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(Visibility visibility) {
+        this.visibility = visibility;
     }
 
     public String getPlayers() {

@@ -7,6 +7,7 @@ import com.arena.snakesladders.model.enums.BoardVariant;
 import com.arena.snakesladders.model.enums.Difficulty;
 import com.arena.snakesladders.model.enums.GameMode;
 import com.arena.snakesladders.model.enums.PowerUpType;
+import com.arena.snakesladders.model.enums.Visibility;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -64,20 +65,44 @@ public class GameService {
     }
 
     public RoomInfo createRoom(String username, String mode, String variant, String difficulty) {
+        return createRoom(username, mode, variant, difficulty, "PRIVATE");
+    }
+
+    public RoomInfo createRoom(String username, String mode, String variant, String difficulty, String visibility) {
         String host = normalizeName(username, "Player");
         GameMode gameMode = enumValue(GameMode.class, mode, GameMode.ONLINE);
         BoardVariant boardVariant = enumValue(BoardVariant.class, variant, BoardVariant.CLASSIC);
         Difficulty gameDifficulty = enumValue(Difficulty.class, difficulty, Difficulty.EASY);
+        Visibility roomVisibility = enumValue(Visibility.class, visibility, Visibility.PRIVATE);
 
         String code;
         synchronized (rooms) {
             do {
                 code = String.valueOf(100000 + random.nextInt(900000));
             } while (rooms.containsKey(code));
-            Room room = new Room(code, host, gameMode, boardVariant, gameDifficulty);
+            Room room = new Room(code, host, gameMode, boardVariant, gameDifficulty, roomVisibility);
             room.players.add(host);
             rooms.put(code, room);
             return room.toInfo();
+        }
+    }
+
+    public List<RoomInfo> listPublicRooms() {
+        synchronized (rooms) {
+            List<RoomInfo> publicRooms = new ArrayList<>();
+            for (Room room : rooms.values()) {
+                GameSession session = sessions.get(room.code);
+                String sessionStatus = session != null ? session.status.name() : "WAITING";
+                // Only PUBLIC rooms that are WAITING (not PLAYING/FINISHED) and not full
+                if (room.visibility == Visibility.PUBLIC &&
+                    "WAITING".equals(sessionStatus) &&
+                    room.players.size() < MAX_PLAYERS) {
+                    publicRooms.add(room.toInfo());
+                }
+            }
+            // Sort by creation time (newest first)
+            publicRooms.sort((a, b) -> Long.compare(b.getCreatedAt(), a.getCreatedAt()));
+            return publicRooms;
         }
     }
 
@@ -585,15 +610,17 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
         private final GameMode mode;
         private final BoardVariant variant;
         private final Difficulty difficulty;
+        private final Visibility visibility;
         private final List<String> players = new ArrayList<>();
         private final long createdAt = System.currentTimeMillis();
 
-        Room(String code, String hostUsername, GameMode mode, BoardVariant variant, Difficulty difficulty) {
+        Room(String code, String hostUsername, GameMode mode, BoardVariant variant, Difficulty difficulty, Visibility visibility) {
             this.code = code;
             this.hostUsername = hostUsername;
             this.mode = mode;
             this.variant = variant;
             this.difficulty = difficulty;
+            this.visibility = visibility;
         }
 
         boolean containsPlayer(String name) {
@@ -613,7 +640,7 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
                 player.put("host", i == 0);
                 playerMaps.add(player);
             }
-            return new RoomInfo(code, hostUsername, mode, variant, difficulty, playerMaps,
+            return new RoomInfo(code, hostUsername, mode, variant, difficulty, visibility, playerMaps,
                 createdAt, System.currentTimeMillis());
         }
     }
@@ -624,17 +651,19 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
         private final GameMode mode;
         private final BoardVariant variant;
         private final Difficulty difficulty;
+        private final Visibility visibility;
         private final List<Map<String, Object>> players;
         private final long createdAt;
         private final long now;
 
         RoomInfo(String roomCode, String hostUsername, GameMode mode, BoardVariant variant,
-                 Difficulty difficulty, List<Map<String, Object>> players, long createdAt, long now) {
+                 Difficulty difficulty, Visibility visibility, List<Map<String, Object>> players, long createdAt, long now) {
             this.roomCode = roomCode;
             this.hostUsername = hostUsername;
             this.mode = mode;
             this.variant = variant;
             this.difficulty = difficulty;
+            this.visibility = visibility;
             this.players = players;
             this.createdAt = createdAt;
             this.now = now;
@@ -658,6 +687,10 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
 
         public Difficulty getDifficulty() {
             return difficulty;
+        }
+
+        public Visibility getVisibility() {
+            return visibility;
         }
 
         public List<Map<String, Object>> getPlayers() {

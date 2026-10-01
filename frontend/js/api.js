@@ -52,8 +52,8 @@
         searchPlayers(q, limit) { return this.get("/players/search?q=" + enc(q || "") + "&limit=" + (limit || 20)); }
 
         /* ---------------- online room methods (REST) ---------------- */
-        createRoom(username, mode, variant) {
-            return this.post("/rooms", { username, mode, variant });
+        createRoom(username, mode, variant, visibility) {
+            return this.post("/rooms", { username, mode, variant, visibility });
         }
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });
@@ -61,6 +61,9 @@
         start(code, player) {
             // Send START over WebSocket (server-authoritative); REST /rooms/{code}/start not exposed
             return this.sendRoom(code, "START", player, null);
+        }
+        getPublicRooms() {
+            return this.get("/rooms/public");
         }
 
         /* ---------------- WebSocket helpers ---------------- */

@@ -21,8 +21,8 @@
         busy: false, lastState: null,
         built: false, builtCode: null, builtSize: 0, builtMap: null, drawnState: null,
         soundOn: true, audio: null,
-        config: { variant: "CLASSIC", difficulty: "EASY", localCount: 2, localNames: [], mode: "LOCAL" },
-        engine: null, stateQueue: null,
+        config: { variant: "CLASSIC", difficulty: "EASY", localCount: 2, localNames: [], mode: "LOCAL", visibility: "PRIVATE" },
+        engine: null, stateQueue: [],
         local: false, // true only for LOCAL multiplayer (keyboard roll mapping applies)
         online: false, // true only for ONLINE (server-authoritative) mode
         // riddle state
@@ -35,7 +35,6 @@
         ws: null, roomCode: null, onlinePlayers: [], isHost: false
     };
     const LOCAL_SAVE_KEY = "sl3d_local_save";
-    let stateQueue = null;
     let lastCurrentPlayer = null; // Track previous player for pass-and-play toast
 
     /* ---------------- local persistence ---------------- */
@@ -420,7 +419,7 @@
         ensureBuild(animatingPreReshuffleMove ? (G.drawnState || st) : st);
         if (animate && st.lastEvent) {
             if (G.busy) {
-                stateQueue = { st, animate };
+                G.stateQueue.push({ st, animate });
                 return;
             }
 if (st.lastEvent.kind === "SLIDE") {
@@ -476,11 +475,13 @@ if (st.lastEvent.kind === "SLIDE") {
         G.board.setCurrent(st.currentPlayerName);
         renderState(st);
         G.busy = false;
-        if (stateQueue) {
-            const next = stateQueue;
-            stateQueue = null;
+        // Process queued states (FIFO)
+        while (G.stateQueue.length > 0) {
+            const next = G.stateQueue.shift();
             applyState(next.st, next.animate);
-            return;
+            // If the next state starts an animation, it will set G.busy = true
+            // and we'll stop processing until that animation completes
+            if (G.busy) break;
         }
         if (st.status === "FINISHED") {
             clearLocalGame();
@@ -964,8 +965,9 @@ if (st.lastEvent.kind === "SLIDE") {
 
     async function createOnlineRoom(selected) {
         G.myName = selected[0];
+        const visibility = G.config.visibility || "PRIVATE";
         try {
-            const resp = await G.api.createRoom(G.myName, "ONLINE", G.config.variant);
+            const resp = await G.api.createRoom(G.myName, "ONLINE", G.config.variant, visibility);
             G.roomCode = resp.roomCode;
         } catch (e) {
             G.roomCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1457,6 +1459,86 @@ if (st.lastEvent.kind === "SLIDE") {
             updateModeDesc();
             refreshSetupFields();
         }
+
+        // Visibility segment (ONLINE create)
+        const visBtns = $("seg-visibility");
+        if (visBtns) {
+            visBtns.querySelectorAll("button").forEach(b => {
+                b.onclick = () => {
+                    visBtns.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+                    b.classList.add("active");
+                    G.config.visibility = b.dataset.visibility;
+                };
+            });
+        }
+
+        // Lobby: load public rooms when ONLINE mode is shown
+        async function loadLobby() {
+            const listEl = $("public-rooms-list");
+            const emptyEl = $("lobby-empty");
+            if (!listEl) return;
+            try {
+                const rooms = await G.api.getPublicRooms();
+                listEl.innerHTML = "";
+                if (!rooms || rooms.length === 0) {
+                    if (emptyEl) emptyEl.style.display = "block";
+                    return;
+                }
+                if (emptyEl) emptyEl.style.display = "none";
+                for (const room of rooms) {
+                    const row = document.createElement("div");
+                    row.style.cssText = "padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.04); margin-bottom: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;";
+                    row.onmouseenter = () => row.style.background = "rgba(110,168,254,0.15)";
+                    row.onmouseleave = () => row.style.background = "rgba(255,255,255,0.04)";
+                    const playersCount = room.players ? room.players.length : 0;
+                    row.innerHTML = `
+                        <div>
+                            <div style="font-weight: 600;">${room.roomCode}</div>
+                            <div style="font-size: 11px; color: var(--muted);">Host: ${room.hostUsername} · ${playersCount}/4 players</div>
+                        </div>
+                        <span style="color: var(--accent);">Join →</span>
+                    `;
+                    row.onclick = () => {
+                        // Prefill room code and join
+                        if ($("input-room")) $("input-room").value = room.roomCode;
+                        startGame();
+                    };
+                    listEl.appendChild(row);
+                }
+            } catch (e) {
+                console.error("Failed to load lobby:", e);
+                if (emptyEl) {
+                    emptyEl.textContent = "Failed to load public rooms.";
+                    emptyEl.style.display = "block";
+                }
+            }
+        }
+
+        // Refresh lobby button
+        const refreshLobbyBtn = $("btn-refresh-lobby");
+        if (refreshLobbyBtn) {
+            refreshLobbyBtn.onclick = () => loadLobby();
+        }
+
+        // Show/hide public rooms list when ONLINE mode is selected
+        function toggleLobbyVisibility() {
+            const field = $("field-public-rooms");
+            if (field) {
+                if (G.config.mode === "ONLINE") {
+                    field.classList.remove("hidden");
+                    loadLobby();
+                } else {
+                    field.classList.add("hidden");
+                }
+            }
+        }
+
+        // Override refreshSetupFields to also toggle lobby
+        const origRefresh = refreshSetupFields;
+        refreshSetupFields = function() {
+            origRefresh();
+            toggleLobbyVisibility();
+        };
 
         // Player name input
         const nameInput = $("input-name");
