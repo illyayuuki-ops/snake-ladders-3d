@@ -3,18 +3,12 @@ package com.arena.snakesladders.service;
 import com.arena.snakesladders.model.Board;
 import com.arena.snakesladders.model.enums.BoardVariant;
 import com.arena.snakesladders.model.enums.PowerUpType;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Builds board layouts for every variant. CLASSIC and POWERUP use curated, fixed
@@ -24,44 +18,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class BoardService {
 
     private final java.util.Random rng = new java.util.Random();
-    private static final ObjectMapper JSON = new ObjectMapper();
-    private static final List<Map<String, Map<String, Integer>>> GALLERY_LAYOUTS = loadGalleryLayouts();
-
-    private static List<Map<String, Map<String, Integer>>> loadGalleryLayouts() {
-        try (InputStream is = BoardService.class.getClassLoader().getResourceAsStream("boards-gallery.json")) {
-            if (is == null) return Collections.emptyList();
-            return JSON.readValue(is, new TypeReference<List<Map<String, Map<String, Integer>>>>() {});
-        } catch (Exception e) {
-            return Collections.emptyList();
-        }
-    }
-
-    public int galleryCount() {
-        return GALLERY_LAYOUTS.size();
-    }
-
-    /** Build the gallery board for the given layout index (0-based). */
-    public Board generateGallery(int index) {
-        if (GALLERY_LAYOUTS.isEmpty()) return classicBoard(false);
-        int idx = Math.max(0, Math.min(index, GALLERY_LAYOUTS.size() - 1));
-        Map<String, Map<String, Integer>> entry = GALLERY_LAYOUTS.get(idx);
-        Board b = new Board(100);
-        Map<String, Integer> sn = entry.getOrDefault("s", Collections.emptyMap());
-        Map<String, Integer> ld = entry.getOrDefault("l", Collections.emptyMap());
-        for (Map.Entry<String, Integer> e : sn.entrySet()) {
-            b.getSnakes().put(Integer.valueOf(e.getKey()), e.getValue());
-        }
-        for (Map.Entry<String, Integer> e : ld.entrySet()) {
-            b.getLadders().put(Integer.valueOf(e.getKey()), e.getValue());
-        }
-        b.setSequence(idx);
-        return b;
-    }
-
-    public int galleryLayoutIndex() {
-        if (GALLERY_LAYOUTS.isEmpty()) return 0;
-        return ThreadLocalRandom.current().nextInt(GALLERY_LAYOUTS.size());
-    }
 
     public int sizeFor(BoardVariant variant) {
         return (variant == BoardVariant.SPEED) ? 50 : 100;
@@ -77,8 +33,6 @@ public class BoardService {
                 return randomBoard(100, 10, 10, false);
             case SPEED:
                 return randomBoard(50, 9, 5, false);
-            case GALLERY:
-                return generateGallery(galleryLayoutIndex());
             default:
                 return classicBoard(false);
         }

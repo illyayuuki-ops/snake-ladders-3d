@@ -2,7 +2,7 @@
    sw.js — Service Worker for Snakes & Ladders 3D (PWA)
    Cache-first for app shell; network-first for /api/* and /ws/*
    ============================================================ */
-const CACHE_VERSION = 'snl3d-v20';
+const CACHE_VERSION = 'snl3d-v17';
 const CORE_CACHE = CACHE_VERSION + '-core';
 
 // A real, well-formed Response returned whenever a request cannot be
@@ -18,8 +18,6 @@ const APP_SHELL = [
     '/css/styles.css',
     '/js/api.js',
     '/js/board3d.js',
-    '/js/board25d.js',
-    '/js/boards-data.js',
     '/js/dice.js',
     '/js/engine.js',
     '/js/game.js',
@@ -27,7 +25,6 @@ const APP_SHELL = [
     '/vendor/sockjs.min.js',
     '/vendor/stomp.min.js',
     '/vendor/qrcode.min.js',
-    '/vendor/html5-qrcode.min.js',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
@@ -44,27 +41,7 @@ const APP_SHELL = [
     '/assets/pawn-2.png',
     '/assets/pawn-3.png',
     '/assets/pawn-4.png',
-    '/assets/snake-head.png',
-    '/assets/boards25d/snakes-and-ladders-board-01.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-02.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-03.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-04.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-05.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-06.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-07.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-08.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-09.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-10.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-11.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-12.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-13.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-14.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-15.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-16.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-17.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-18.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-19.jpg',
-    '/assets/boards25d/snakes-and-ladders-board-20.jpg'
+    '/assets/snake-head.png'
 ];
 
 self.addEventListener('install', (event) => {

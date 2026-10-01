@@ -11,7 +11,5 @@ public enum BoardVariant {
     /** 100-tile board that reshuffles snakes/ladders every 3 turns. */
     CHAOS,
     /** Fast 50-tile board with a higher ladder density. */
-    SPEED,
-    /** One of 20 curated 100-tile gallery layouts (2.5D illustrated boards). */
-    GALLERY
+    SPEED
 }

@@ -62,9 +62,6 @@ public class GameStateResponse {
     public boolean boardChanged;
     public long turnTimeRemainingMs; // Remaining time for current turn (ms), 0 if not applicable
 
-    /** Gallery layout index (0-19) selected for a GALLERY game; null for other variants. */
-    public Integer layoutIndex;
-
     public Map<Integer, Integer> snakes = new LinkedHashMap<>();
     public Map<Integer, Integer> ladders = new LinkedHashMap<>();
     public Map<Integer, String> powerups = new LinkedHashMap<>();

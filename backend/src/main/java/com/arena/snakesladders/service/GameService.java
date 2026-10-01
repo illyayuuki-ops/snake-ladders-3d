@@ -63,29 +63,22 @@ public class GameService {
         }
     }
 
-    public RoomInfo createRoom(String username, String mode, String variant, String difficulty, String visibility) {
+    public RoomInfo createRoom(String username, String mode, String variant, String difficulty) {
         String host = normalizeName(username, "Player");
         GameMode gameMode = enumValue(GameMode.class, mode, GameMode.ONLINE);
         BoardVariant boardVariant = enumValue(BoardVariant.class, variant, BoardVariant.CLASSIC);
         Difficulty gameDifficulty = enumValue(Difficulty.class, difficulty, Difficulty.EASY);
-        String vis = normalizeVisibility(visibility);
 
         String code;
         synchronized (rooms) {
             do {
                 code = String.valueOf(100000 + random.nextInt(900000));
             } while (rooms.containsKey(code));
-            Room room = new Room(code, host, gameMode, boardVariant, gameDifficulty, vis);
+            Room room = new Room(code, host, gameMode, boardVariant, gameDifficulty);
             room.players.add(host);
             rooms.put(code, room);
             return room.toInfo();
         }
-    }
-
-    private static String normalizeVisibility(String value) {
-        if (value == null || value.trim().isEmpty()) return "PRIVATE";
-        String v = value.trim().toUpperCase();
-        return v.equals("PUBLIC") ? "PUBLIC" : "PRIVATE";
     }
 
     public RoomInfo joinRoom(String code, String username) {
@@ -115,23 +108,6 @@ public class GameService {
             rooms.remove(roomCode);
         }
         sessions.remove(roomCode);
-    }
-
-    /** Live, waiting public rooms suitable for a lobby listing. */
-    public List<RoomInfo> listPublicRooms() {
-        List<RoomInfo> result = new ArrayList<>();
-        synchronized (rooms) {
-            for (Room room : rooms.values()) {
-                if ("PUBLIC".equals(room.visibility) && room.players.size() < MAX_PLAYERS) {
-                    GameSession session = sessions.get(room.code);
-                    // Only include rooms where the game has not started (no session or session is WAITING)
-                    if (session == null || session.status == GameStateResponse.GameStatus.WAITING) {
-                        result.add(room.toInfo());
-                    }
-                }
-            }
-        }
-        return result;
     }
 
     public GameStateResponse join(String code, String playerName, Map<String, Object> payload) {
@@ -355,13 +331,7 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
 
     private GameSession createSession(Room room) {
         GameSession session = new GameSession(room.code, room.mode, room.variant, room.difficulty);
-        if (room.variant == BoardVariant.GALLERY) {
-            int idx = boardService.galleryLayoutIndex();
-            session.board = boardService.generateGallery(idx);
-            session.layoutIndex = idx;
-        } else {
-            session.board = boardService.generate(room.variant);
-        }
+        session.board = boardService.generate(room.variant);
         for (String playerName : new ArrayList<>(room.players)) {
             addSeat(session, playerName);
         }
@@ -615,17 +585,15 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
         private final GameMode mode;
         private final BoardVariant variant;
         private final Difficulty difficulty;
-        private final String visibility;
         private final List<String> players = new ArrayList<>();
         private final long createdAt = System.currentTimeMillis();
 
-        Room(String code, String hostUsername, GameMode mode, BoardVariant variant, Difficulty difficulty, String visibility) {
+        Room(String code, String hostUsername, GameMode mode, BoardVariant variant, Difficulty difficulty) {
             this.code = code;
             this.hostUsername = hostUsername;
             this.mode = mode;
             this.variant = variant;
             this.difficulty = difficulty;
-            this.visibility = visibility == null ? "PRIVATE" : visibility;
         }
 
         boolean containsPlayer(String name) {
@@ -645,8 +613,8 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
                 player.put("host", i == 0);
                 playerMaps.add(player);
             }
-            return new RoomInfo(code, hostUsername, mode, variant, difficulty, visibility, playerMaps,
-                    createdAt, System.currentTimeMillis());
+            return new RoomInfo(code, hostUsername, mode, variant, difficulty, playerMaps,
+                createdAt, System.currentTimeMillis());
         }
     }
 
@@ -656,19 +624,17 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
         private final GameMode mode;
         private final BoardVariant variant;
         private final Difficulty difficulty;
-        private final String visibility;
         private final List<Map<String, Object>> players;
         private final long createdAt;
         private final long now;
 
         RoomInfo(String roomCode, String hostUsername, GameMode mode, BoardVariant variant,
-                 Difficulty difficulty, String visibility, List<Map<String, Object>> players, long createdAt, long now) {
+                 Difficulty difficulty, List<Map<String, Object>> players, long createdAt, long now) {
             this.roomCode = roomCode;
             this.hostUsername = hostUsername;
             this.mode = mode;
             this.variant = variant;
             this.difficulty = difficulty;
-            this.visibility = visibility;
             this.players = players;
             this.createdAt = createdAt;
             this.now = now;
@@ -692,10 +658,6 @@ public GameStateResponse usePowerUp(String code, String playerName, Map<String, 
 
         public Difficulty getDifficulty() {
             return difficulty;
-        }
-
-        public String getVisibility() {
-            return visibility;
         }
 
         public List<Map<String, Object>> getPlayers() {

@@ -176,7 +176,6 @@
                             <button data-variant="POWERUP" role="radio" aria-checked="false">Power-Up</button>
                             <button data-variant="CHAOS" role="radio" aria-checked="false">Chaos</button>
                             <button data-variant="SPEED" role="radio" aria-checked="false">Speed</button>
-                            <button data-variant="GALLERY" role="radio" aria-checked="false">Gallery</button>
                         </div>
                     </div>
                 </div>
@@ -210,16 +209,9 @@
                 <div class="setup-section hidden" id="field-room">
                     <div class="field">
                         <label for="input-room">Room Code</label>
-             <div class="room-row">
-                <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code (empty = create room)" autocomplete="off" title="Enter a 6-digit room code to join, or leave empty to create a new room" />
-                <button id="btn-scan-qr" type="button" class="icon-btn" title="Scan a room QR code" aria-label="Scan room QR">📷</button>
-            </div>
-            <div class="visibility-row" id="field-visibility">
-                <span class="vis-label">Visibility:</span>
-                <button id="btn-vis-private" data-visibility="PRIVATE" class="vis-btn active" type="button">Private</button>
-                <button id="btn-vis-public" data-visibility="PUBLIC" class="vis-btn" type="button">Public</button>
-                <button id="btn-lobby" type="button" class="icon-btn" title="Browse public rooms" aria-label="Public lobby">🌐</button>
-            </div>
+                        <div class="room-row">
+                            <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code (empty = create room)" autocomplete="off" title="Enter a 6-digit room code to join, or leave empty to create a new room" />
+                        </div>
                     </div>
                 </div>
 
@@ -252,36 +244,6 @@
         </div>
     </div>
 
-    <!-- ======================= PUBLIC LOBBY ======================= -->
-    <div id="lobby-overlay" class="overlay hidden">
-        <div class="qr-card glass">
-            <h2>🌐 Public Rooms</h2>
-            <p class="hint">Join a public room or create your own.</p>
-            <div id="lobby-list" class="qr-scan-result">Loading…</div>
-            <div class="setup-actions">
-                <button id="btn-lobby-refresh" class="secondary">Refresh</button>
-                <button id="btn-lobby-close" class="secondary">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======================= QR SCANNER PANEL ======================= -->
-    <div id="scanner-overlay" class="overlay hidden">
-        <div class="qr-card glass">
-            <h2>📷 Scan a Room QR Code</h2>
-            <p class="hint">Point your camera at another player's room QR code.</p>
-            <div id="scanner-wrapper">
-                <video id="qr-video" playsinline autoplay muted></video>
-                <canvas id="qr-canvas" hidden></canvas>
-                <div id="qr-scan-result" class="room-code-display">—</div>
-                <div id="qr-scan-error" class="hint" style="color:var(--bad);"></div>
-            </div>
-            <div class="setup-actions">
-                <button id="btn-scan-stop" class="secondary">Cancel</button>
-            </div>
-        </div>
-    </div>
-
     <!-- ======================= TOAST ======================= -->
     <div id="toast" class="hidden"></div>
 
@@ -309,14 +271,11 @@
     <script src="/js/api.js"></script>
     <script src="/js/riddles.js"></script>
     <script src="/js/board3d.js"></script>
-    <script src="/js/board25d.js"></script>
-    <script src="/js/boards-data.js"></script>
     <script src="/js/dice.js"></script>
     <script src="/js/engine.js"></script>
     <script src="/vendor/sockjs.min.js"></script>
     <script src="/vendor/stomp.min.js"></script>
     <script src="/vendor/qrcode.min.js"></script>
-    <script src="/vendor/html5-qrcode.min.js"></script>
     <script src="/js/game.js"></script>
     <script>
         // PWA: register service worker (only in secure context)
