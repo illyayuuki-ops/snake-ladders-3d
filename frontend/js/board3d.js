@@ -374,17 +374,12 @@
                 style: "filter: drop-shadow(0 0 6px #ff6b6b);"
             }));
 
-            // Head - use fire snake image anchored at point a (head tile center)
-            const headSize = this.tile * 0.55;
-            const headImg = this._svgEl("image", {
-                href: "/assets/snake-head.png",
-                x: a.x - headSize / 2,
-                y: a.y - headSize / 2,
-                width: headSize,
-                height: headSize,
-                preserveAspectRatio: "xMidYMid meet"
-            });
-            g.appendChild(headImg);
+            // Head - SVG drawn head (circle with eyes/tongue)
+            const headR = this.tile * 0.16;
+            g.appendChild(this._svgEl("circle", {
+                cx: a.x, cy: a.y, r: headR,
+                fill: "url(#snakeGrad)", stroke: "#7f1d1d", "stroke-width": 2, class: "snake-head"
+            }));
 
             // Eyes with pupils (positioned relative to head center)
             [[0.09, 0.09], [-0.09, 0.09]].forEach(([ex, ey]) => {

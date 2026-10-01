@@ -149,31 +149,31 @@
         return gain;
     }
 
-    function startBgMusic() {
+    async function startBgMusic() {
         if (G.bgMusic.playing) return;
+        // Ensure AudioContext is running (needs user gesture)
+        ensureAudio();
+        if (G.audio && G.audio.state === "suspended") {
+            await G.audio.resume();
+        }
         // Try HTML audio element first (file-based)
         const audioEl = $("bg-music");
         const source = audioEl && audioEl.querySelector("source[src]");
         if (source) {
             audioEl.volume = G.bgMusic.volume;
-            audioEl.play().catch((e) => {
+            try {
+                await audioEl.play();
+                G.bgMusic.node = audioEl;
+                G.bgMusic.playing = true;
+                return;
+            } catch (e) {
                 console.error("[bg-music] HTML audio play failed:", e);
-                // Fallback to procedural if file fails
-                ensureAudio();
-                if (G.audio) createRetroMusic();
-            });
-            G.bgMusic.node = audioEl;
-            G.bgMusic.playing = true;
-            return;
+                // Fall through to procedural
+            }
         }
         // Fallback to procedural
-        ensureAudio();
         if (!G.audio) return;
-        if (G.audio.state === "suspended") {
-            G.audio.resume().then(() => createRetroMusic());
-        } else {
-            createRetroMusic();
-        }
+        createRetroMusic();
     }
 
     function stopBgMusic() {
@@ -423,25 +423,33 @@
                 stateQueue = { st, animate };
                 return;
             }
-            if (st.lastEvent.kind === "SLIDE") {
-                G.busy = true;
-                setRollLabel("Rolling…", false);
-                sound("snake");
-                G.dice.roll(st.dice, async () => {
-                    const slideEvent = st.lastEvent;
-                    const riddle = await fetchRiddle();
-                    if (!riddle) {
-                        // No riddle pool available — the snake still bites.
-                        G.board.moveAlong(slideEvent.player, slideEvent.path, slideEvent.to, "SLIDE", () => afterMove(st));
-                        return;
-                    }
-                    G.riddle.currentRiddle = riddle;
-                    G.riddle.slideEvent = slideEvent;
-                    G.riddle.slideState = st;
-                    showRiddleModal(riddle);
-                });
-                return;
-            }
+if (st.lastEvent.kind === "SLIDE") {
+            G.busy = true;
+            setRollLabel("Rolling…", false);
+            sound("snake");
+            G.dice.roll(st.dice, async () => {
+                const slideEvent = st.lastEvent;
+                // Check if the player who landed on the snake is an AI
+                const slidePlayer = st.players.find(p => p.name === slideEvent.player);
+                const isAI = slidePlayer && slidePlayer.ai;
+                if (isAI) {
+                    // AI auto-resolves: always slide down (fail the riddle)
+                    G.board.moveAlong(slideEvent.player, slideEvent.path, slideEvent.to, "SLIDE", () => afterMove(st));
+                    return;
+                }
+                const riddle = await fetchRiddle();
+                if (!riddle) {
+                    // No riddle pool available — the snake still bites.
+                    G.board.moveAlong(slideEvent.player, slideEvent.path, slideEvent.to, "SLIDE", () => afterMove(st));
+                    return;
+                }
+                G.riddle.currentRiddle = riddle;
+                G.riddle.slideEvent = slideEvent;
+                G.riddle.slideState = st;
+                showRiddleModal(riddle);
+            });
+            return;
+        }
             G.busy = true;
             setRollLabel("Rolling…", false);
             if (st.lastEvent.kind === "CLIMB") sound("ladder");
@@ -1092,6 +1100,160 @@
         }
     }
 
+    /* ---------------- QR Code Scanner for joining rooms ---------------- */
+    let qrScanner = null;
+    let qrScannerStop = null;
+
+    async function startQrScanner() {
+        const videoContainer = $("qr-scanner-video");
+        const statusEl = $("qr-scanner-status");
+        const scanBtn = $("btn-scan-qr");
+        const stopBtn = $("btn-stop-qr-scan");
+        const hintEl = $("qr-scan-hint");
+        const container = $("qr-scanner-container");
+
+        if (!videoContainer || !statusEl) return;
+
+        // Check for secure context (required for camera access)
+        const isSecureContext = window.isSecureContext ||
+            location.hostname === "localhost" ||
+            location.hostname === "127.0.0.1";
+        if (!isSecureContext) {
+            hintEl.textContent = "Camera requires HTTPS. Please use manual code entry or host on HTTPS.";
+            hintEl.style.display = "block";
+            return;
+        }
+
+        // Check for BarcodeDetector API support
+        if (!("BarcodeDetector" in window)) {
+            hintEl.textContent = "QR scanning not supported in this browser. Please use manual code entry.";
+            hintEl.style.display = "block";
+            return;
+        }
+
+        // Check if barcode detector supports QR codes
+        try {
+            const formats = await BarcodeDetector.getSupportedFormats();
+            if (!formats.includes("qr_code")) {
+                hintEl.textContent = "QR code format not supported. Please use manual code entry.";
+                hintEl.style.display = "block";
+                return;
+            }
+        } catch (e) {
+            // If getSupportedFormats fails, try anyway
+        }
+
+        // Show scanner UI
+        container.classList.remove("hidden");
+        scanBtn.classList.add("hidden");
+        hintEl.style.display = "none";
+        statusEl.textContent = "Starting camera...";
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+            });
+
+            const video = document.createElement("video");
+            video.srcObject = stream;
+            video.setAttribute("playsinline", "");
+            video.setAttribute("autoplay", "");
+            video.muted = true;
+            video.style.width = "100%";
+            video.style.height = "auto";
+            videoContainer.innerHTML = "";
+            videoContainer.appendChild(video);
+
+            await video.play();
+
+            const detector = new BarcodeDetector({ formats: ["qr_code"] });
+            statusEl.textContent = "Point camera at QR code...";
+
+            let scanning = true;
+            qrScannerStop = () => { scanning = false; };
+
+            async function scanLoop() {
+                if (!scanning) {
+                    stream.getTracks().forEach(t => t.stop());
+                    videoContainer.innerHTML = "";
+                    container.classList.add("hidden");
+                    scanBtn.classList.remove("hidden");
+                    return;
+                }
+
+                try {
+                    const barcodes = await detector.detect(video);
+                    if (barcodes.length > 0) {
+                        const rawValue = barcodes[0].rawValue;
+                        scanning = false;
+                        stream.getTracks().forEach(t => t.stop());
+                        videoContainer.innerHTML = "";
+                        container.classList.add("hidden");
+                        scanBtn.classList.remove("hidden");
+                        statusEl.textContent = "";
+                        handleQrResult(rawValue);
+                        return;
+                    }
+                } catch (e) {
+                    // Detection failed, continue scanning
+                }
+
+                requestAnimationFrame(scanLoop);
+            }
+
+            requestAnimationFrame(scanLoop);
+
+            // Stop button handler
+            stopBtn.onclick = () => {
+                if (qrScannerStop) qrScannerStop();
+            };
+
+        } catch (e) {
+            console.error("QR scanner error:", e);
+            statusEl.textContent = "Camera access denied or unavailable.";
+            container.classList.add("hidden");
+            scanBtn.classList.remove("hidden");
+            if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+                hintEl.textContent = "Camera permission denied. Please allow camera access or use manual entry.";
+                hintEl.style.display = "block";
+            }
+        }
+    }
+
+    function stopQrScanner() {
+        if (qrScannerStop) {
+            qrScannerStop();
+            qrScannerStop = null;
+        }
+        const container = $("qr-scanner-container");
+        const scanBtn = $("btn-scan-qr");
+        if (container) container.classList.add("hidden");
+        if (scanBtn) scanBtn.classList.remove("hidden");
+    }
+
+    function handleQrResult(rawValue) {
+        // Parse room code from QR data
+        // Expected formats: "123456" or "/?room=123456" or "https://host/?room=123456"
+        let roomCode = null;
+        if (/^\d{6}$/.test(rawValue.trim())) {
+            roomCode = rawValue.trim();
+        } else {
+            // Try to extract from URL
+            const urlMatch = rawValue.match(/[?&]room=(\d{6})/);
+            if (urlMatch) roomCode = urlMatch[1];
+        }
+
+        if (roomCode) {
+            const inputRoom = $("input-room");
+            if (inputRoom) {
+                inputRoom.value = roomCode;
+                toast("QR code scanned: Room " + roomCode);
+            }
+        } else {
+            toast("QR code did not contain a valid room code");
+        }
+    }
+
     function updateModeDesc() {
         const desc = $("mode-desc");
         if (!desc) return;
@@ -1514,6 +1676,14 @@
                 if (e.key === "Enter") { e.preventDefault(); sendChat(); }
             });
         }
+
+        // QR Scanner button for joining rooms
+        if ($("btn-scan-qr")) {
+            $("btn-scan-qr").onclick = () => startQrScanner();
+        }
+        if ($("btn-stop-qr-scan")) {
+            $("btn-stop-qr-scan").onclick = () => stopQrScanner();
+        }
     }
 
     /* ---------------- camera drag / zoom ---------------- */
@@ -1572,6 +1742,25 @@
         loadLeaderboard("winrate");
         $("btn-roll").onclick = () => doRoll(G.lastState ? G.lastState.currentPlayerName : null);
         G.board.setCamera(58, 0, 1);
+
+        // Resume AudioContext on first user interaction (for background music)
+        let audioResumed = false;
+        function resumeAudioOnInteraction() {
+            if (audioResumed) return;
+            audioResumed = true;
+            ensureAudio();
+            if (G.audio && G.audio.state === "suspended") {
+                G.audio.resume().then(() => {
+                    if (G.soundOn && !G.bgMusic.playing) startBgMusic();
+                });
+            } else if (G.soundOn && !G.bgMusic.playing) {
+                startBgMusic();
+            }
+            document.removeEventListener("click", resumeAudioOnInteraction);
+            document.removeEventListener("keydown", resumeAudioOnInteraction);
+        }
+        document.addEventListener("click", resumeAudioOnInteraction, { once: true });
+        document.addEventListener("keydown", resumeAudioOnInteraction, { once: true });
 
         // Enable admin-assigned keyboard roll controls (LOCAL multiplayer only)
         enableKeyboardRolling();

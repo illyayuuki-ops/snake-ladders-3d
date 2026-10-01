@@ -72,9 +72,7 @@ button { font-family: inherit; cursor: pointer; }
     position: absolute;
     inset: 0;
     transform: translateZ(calc(var(--tile) * -0.5));
-    background-image: url('/assets/board-map.png');
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(160deg, rgba(11, 16, 32, 0.85), rgba(19, 26, 51, 0.9));
     border-radius: 14px;
     z-index: -1;
 }
@@ -430,14 +428,14 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 .pw-btn:disabled { opacity: .4; }
 
 /* log */
-#log-panel { position: fixed; right: 12px; top: 84px; width: 250px; max-height: 38vh; padding: var(--panel-pad); z-index: 15;
+#log-panel { position: fixed; right: 12px; top: 84px; width: 250px; max-height: 35vh; padding: var(--panel-pad); z-index: 15;
     display: flex; flex-direction: column; gap: var(--panel-gap); }
 #log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-1); font-size: 12px; flex: 1; }
 #log-list li { padding: var(--sp-1) var(--sp-2); border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text); animation: fadeIn .3s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to {opacity:1; transform:none;} }
 
-/* chat panel (online only) */
-#chat-panel { position: fixed; right: 12px; top: calc(84px + 38vh + 14px); width: 250px; max-height: 30vh; padding: var(--panel-pad); z-index: 15;
+/* chat panel (online only) - positioned below log panel */
+#chat-panel { position: fixed; right: 12px; top: calc(84px + 35vh + 10px); width: 250px; max-height: 25vh; padding: var(--panel-pad); z-index: 15;
     display: flex; flex-direction: column; gap: var(--panel-gap); }
 .chat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
 .chat-header h3 { margin: 0; font-size: 13px; letter-spacing: .4px; }
@@ -450,8 +448,8 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 #chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,168,254,0.15); }
 #chat-input::placeholder { color: var(--muted); opacity: 0.6; }
 
-/* leaderboard */
-#leaderboard-panel { position: fixed; right: 12px; top: calc(84px + 38vh + 14px); width: 250px; padding: var(--panel-pad); z-index: 15;
+/* leaderboard - positioned below chat panel (or log panel if chat hidden) */
+#leaderboard-panel { position: fixed; right: 12px; top: calc(84px + 60vh + 15px); width: 250px; padding: var(--panel-pad); z-index: 15;
     display: flex; flex-direction: column; gap: var(--panel-gap); }
 .lb-tabs { display: flex; gap: var(--sp-1); margin-bottom: 0; }
 .lb-tabs button { flex: 1; border: 1px solid var(--glass-brd); background: rgba(255,255,255,0.05); color: var(--muted); border-radius: 8px; padding: var(--sp-1); font-size: 11px; font-weight: 700; }
@@ -540,7 +538,7 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 .setup-fields {
     flex: 1 1 auto;
     min-height: 0;
-    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+    padding: var(--sp-1) var(--sp-3) var(--sp-2);
     display: grid;
     grid-template-columns: 1fr;
     align-content: start;
@@ -564,7 +562,7 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     padding-left: 2px;
 }
 
@@ -576,7 +574,7 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
     display: block;
     font-size: 12px;
     color: var(--muted);
-    margin-bottom: var(--sp-1);
+    margin-bottom: 4px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -950,11 +948,20 @@ button.primary.big:focus-visible {
 /* Narrow desktops: trim the side panels so the board keeps a usable tile size.
    _fit() in board3d.js measures these panels and reserves the wider gutter,
    so the board can never grow underneath them. */
+/* 1366x768 and similar: tighten panel widths and heights */
+@media (max-width: 1400px) and (min-width: 1181px) {
+    #players-panel { width: 190px; }
+    #log-panel, #chat-panel, #leaderboard-panel { width: 220px; }
+    #log-panel { max-height: 32vh; }
+    #chat-panel { top: calc(84px + 32vh + 10px); max-height: 25vh; }
+    #leaderboard-panel { top: calc(84px + 57vh + 15px); }
+}
 @media (max-width: 1180px) {
     #players-panel { width: 172px; }
     #log-panel, #chat-panel, #leaderboard-panel { width: 180px; }
-    #chat-panel, #leaderboard-panel { top: calc(84px + 36vh + 12px); }
-    #log-panel { max-height: 36vh; }
+    #log-panel { max-height: 32vh; }
+    #chat-panel { top: calc(84px + 32vh + 10px); max-height: 25vh; }
+    #leaderboard-panel { top: calc(84px + 57vh + 15px); }
 }
 @media (max-width: 480px) {
     .setup-card { width: 100%; max-height: 94vh; border-radius: 14px; }
@@ -973,8 +980,9 @@ button.primary.big:focus-visible {
 }
 @media (max-width: 900px) {
     #players-panel { width: 160px; top: 80px; padding: 10px; }
-    #log-panel { width: 200px; max-height: 30vh; }
-    #leaderboard-panel { width: 200px; top: calc(80px + 30vh + 10px); }
+    #log-panel { width: 200px; max-height: 28vh; }
+    #chat-panel { width: 200px; top: calc(80px + 28vh + 10px); max-height: 22vh; }
+    #leaderboard-panel { width: 200px; top: calc(80px + 50vh + 12px); }
     .top-stats { gap: 12px; }
 }
 @media (max-width: 680px) {
@@ -983,6 +991,7 @@ button.primary.big:focus-visible {
     #players-panel { display: none; }
     #log-panel { display: none; }
     #leaderboard-panel { display: none; }
+    #chat-panel { display: none; }
     #controls { left: 12px; right: 12px; transform: none; justify-content: space-between; gap: 10px; bottom: 8px; padding: 10px 12px; }
     .top-stats .stat:nth-child(2) { display: none; }
     #board-hint { display: none; }
