@@ -2,7 +2,7 @@
    sw.js — Service Worker for Snakes & Ladders 3D (PWA)
    Cache-first for app shell; network-first for /api/* and /ws/*
    ============================================================ */
-const CACHE_VERSION = 'snl3d-v17';
+const CACHE_VERSION = 'snl3d-v19';
 const CORE_CACHE = CACHE_VERSION + '-core';
 
 // A real, well-formed Response returned whenever a request cannot be
@@ -18,6 +18,8 @@ const APP_SHELL = [
     '/css/styles.css',
     '/js/api.js',
     '/js/board3d.js',
+    '/js/board25d.js',
+    '/js/boards-data.js',
     '/js/dice.js',
     '/js/engine.js',
     '/js/game.js',
@@ -25,6 +27,7 @@ const APP_SHELL = [
     '/vendor/sockjs.min.js',
     '/vendor/stomp.min.js',
     '/vendor/qrcode.min.js',
+    '/vendor/html5-qrcode.min.js',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
     '/icons/icon-512.png',

@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -30,9 +32,23 @@ public class RoomController {
             request.get("username"),
             request.get("mode"),
             request.get("variant"),
-            request.get("difficulty")
+            request.get("difficulty"),
+            request.get("visibility")
         );
         return ResponseEntity.ok(toRoomResponse(room));
+    }
+
+    @GetMapping("/rooms/public")
+    public ResponseEntity<Map<String, Object>> listPublicRooms() {
+        List<RoomInfo> rooms = gameService.listPublicRooms();
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (RoomInfo room : rooms) {
+            list.add(toRoomResponse(room));
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("rooms", list);
+        result.put("count", list.size());
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/rooms/join")
@@ -63,6 +79,7 @@ public class RoomController {
         result.put("variant", room.getVariant().name());
         result.put("difficulty", room.getDifficulty().name());
         result.put("playerCount", room.getPlayers().size());
+        result.put("visibility", room.getVisibility());
         result.put("players", room.getPlayers());
         result.put("ageSeconds", Math.max(0, (room.getNow() - room.getCreatedAt()) / 1000));
         return result;

@@ -7,6 +7,11 @@
     const CLASSIC_LADDERS = [[1,38],[4,14],[9,31],[21,42],[28,84],[36,44],[51,67],[71,91],[80,100]];
     const CLASSIC_SNAKES  = [[16,6],[47,26],[49,11],[56,53],[62,19],[64,60],[87,24],[93,73],[95,75],[98,78]];
 
+    // Gallery boards (20 layouts) shipped as data; window.BOARDS_DATA is provided by
+    // boards-data.js which must be loaded before engine.js.
+    const GALLERY_LAYOUTS = (typeof window !== "undefined" && window.BOARDS_DATA && Array.isArray(window.BOARDS_DATA))
+        ? window.BOARDS_DATA : null;
+
     function rnd(n) { return Math.floor(Math.random() * n); }
 
     class LocalEngine {
@@ -27,8 +32,28 @@
                 }
             } else if (variant === "CHAOS") {
                 this._random(b, 100, 10, 10, false);
+            } else if (variant === "GALLERY") {
+                this._gallery(b);
             } else { // SPEED
                 this._random(b, 50, 9, 5, false);
+            }
+            return b;
+        }
+
+        _gallery(b) {
+            const layouts = GALLERY_LAYOUTS;
+            if (layouts && layouts.length) {
+                const idx = rnd(layouts.length);
+                const L = layouts[idx];
+                b.size = 100;
+                b.layoutIndex = idx;
+                for (const k in L.s) b.snakes[+k] = +L.s[k];
+                for (const k in L.l) b.ladders[+k] = +L.l[k];
+            } else {
+                // No gallery data available (script not loaded): fall back to classic.
+                CLASSIC_LADDERS.forEach(([f, t]) => b.ladders[f] = t);
+                CLASSIC_SNAKES.forEach(([f, t]) => b.snakes[f] = t);
+                b.layoutIndex = 0;
             }
             return b;
         }
@@ -183,6 +208,7 @@
                 currentPlayerName: this.seats.length ? this.current().name : null,
                 dice: this.dice, turnCount: this.turnCount, status: this.status, winner: this.winner,
                 boardSequence: this.boardSequence, boardChanged: this.boardChanged,
+                layoutIndex: this.board.layoutIndex,
                 snakes: Object.assign({}, this.board.snakes), ladders: Object.assign({}, this.board.ladders),
                 powerups: Object.assign({}, this.board.powerups),
                 players: this.seats.map((p, i) => ({

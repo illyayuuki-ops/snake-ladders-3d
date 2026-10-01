@@ -38,6 +38,8 @@ public class GameSession {
     public int finishedCount = 0;
     public int boardSequence = 0;
     public boolean boardChanged = false;
+    /** Selected gallery layout index for the GALLERY variant (null otherwise). */
+    public Integer layoutIndex = null;
     public final Object lock = new Object();
 
     // Turn timer (online only)
@@ -117,6 +119,7 @@ public class GameSession {
         resp.winner = winner;
         resp.boardSequence = boardSequence;
         resp.boardChanged = boardChanged;
+        resp.layoutIndex = layoutIndex;
         resp.turnTimeRemainingMs = getTurnTimeRemainingMs();
 
         resp.snakes = new LinkedHashMap<>(board.getSnakes());

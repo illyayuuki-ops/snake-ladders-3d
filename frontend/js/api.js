@@ -52,8 +52,11 @@
         searchPlayers(q, limit) { return this.get("/players/search?q=" + enc(q || "") + "&limit=" + (limit || 20)); }
 
         /* ---------------- online room methods (REST) ---------------- */
-        createRoom(username, mode, variant) {
-            return this.post("/rooms", { username, mode, variant });
+        createRoom(username, mode, variant, visibility) {
+            return this.post("/rooms", { username, mode, variant, visibility });
+        }
+        publicRooms() {
+            return this.get("/rooms/public");
         }
         joinRoom(code, username) {
             return this.post("/rooms/join", { code: code.toUpperCase(), username });

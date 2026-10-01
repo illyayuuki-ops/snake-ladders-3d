@@ -11,7 +11,8 @@
         CLASSIC: "Classic board with standard snakes and ladders.",
         POWERUP: "Classic board plus collectible power-ups: Shield, Double Roll, Freeze.",
         CHAOS: "The board reshuffles every 3 turns. Adapt or lose!",
-        SPEED: "50-tile sprint with dense ladders for faster matches."
+        SPEED: "50-tile sprint with dense ladders for faster matches.",
+        GALLERY: "One of 20 richly-illustrated 2.5D boards, chosen at random each game."
     };
 
     const G = {
@@ -151,23 +152,26 @@
 
     function startBgMusic() {
         if (G.bgMusic.playing) return;
-        // Try HTML audio element first (file-based)
+        ensureAudio();
         const audioEl = $("bg-music");
         const source = audioEl && audioEl.querySelector("source[src]");
         if (source) {
             audioEl.volume = G.bgMusic.volume;
-            audioEl.play().catch((e) => {
+            Promise.resolve(audioEl.play()).then(() => {
+                G.bgMusic.node = audioEl;
+                G.bgMusic.playing = true;
+            }).catch((e) => {
                 console.error("[bg-music] HTML audio play failed:", e);
-                // Fallback to procedural if file fails
-                ensureAudio();
-                if (G.audio) createRetroMusic();
+                if (G.audio && G.audio.state === "suspended") {
+                    G.audio.resume().then(() => createRetroMusic());
+                } else if (G.audio) {
+                    createRetroMusic();
+                }
             });
             G.bgMusic.node = audioEl;
             G.bgMusic.playing = true;
             return;
         }
-        // Fallback to procedural
-        ensureAudio();
         if (!G.audio) return;
         if (G.audio.state === "suspended") {
             G.audio.resume().then(() => createRetroMusic());
@@ -822,6 +826,20 @@
         });
     }
 
+    /* ---------------- board selection ---------------- */
+    function createBoard(variant) {
+        const b = $("board");
+        // Drop the previous renderer so its resize/orientation listeners don't
+        // keep rebuilding a stale board into the same element.
+        if (G.board && G.board._onResize) {
+            window.removeEventListener("resize", G.board._onResize);
+            window.removeEventListener("orientationchange", G.board._onResize);
+            try { if (G.board.dispose) G.board.dispose(); } catch (e) {}
+        }
+        return variant === "GALLERY" ? new Board25D(b) : new Board3D(b);
+    }
+    function boardWants25D(variant) { return variant === "GALLERY"; }
+
     /* ---------------- start game ---------------- */
     async function startGame() {
         ensureAudio();
@@ -838,10 +856,14 @@
         }
 
         if (selected.length < 2) { toast("Select at least 2 players"); return; }
-        if (G.soundOn) startBgMusic();
+         if (G.soundOn) startBgMusic();
         for (const n of selected) { try { await G.api.ensurePlayer(n); } catch (e) {} }
 
         G.mode = "LOCAL"; G.variant = cfg.variant; resetBuild();
+        if (boardWants25D(cfg.variant) !== (G.board instanceof Board25D)) {
+            G.board = createBoard(cfg.variant);
+        }
+        G.board.setCamera(58, 0, 1);
         G.code = "LOCAL";
         G.local = true;
         G.myName = selected[0]; // Track the first player as "me"
@@ -891,6 +913,9 @@
         for (const n of playerNames) { try { G.api.ensurePlayer(n); } catch (e) {} }
 
         G.mode = mode; G.variant = variant; resetBuild();
+        if (boardWants25D(variant) !== (G.board instanceof Board25D)) {
+            G.board = createBoard(variant);
+        }
         G.code = "LOCAL";
         G.local = true;
         G.myName = playerNames[0];
@@ -911,6 +936,9 @@
         const difficulty = st.difficulty || "EASY";
 
         G.mode = mode; G.variant = variant; resetBuild();
+        if (boardWants25D(variant) !== (G.board instanceof Board25D)) {
+            G.board = createBoard(variant);
+        }
         G.code = "LOCAL";
         G.local = true;
         G.myName = st.players[0]?.name || "Player 1";
@@ -957,7 +985,7 @@
     async function createOnlineRoom(selected) {
         G.myName = selected[0];
         try {
-            const resp = await G.api.createRoom(G.myName, "ONLINE", G.config.variant);
+            const resp = await G.api.createRoom(G.myName, "ONLINE", G.config.variant, currentVisibility());
             G.roomCode = resp.roomCode;
         } catch (e) {
             G.roomCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1381,6 +1409,115 @@
         if ($("btn-close-qr")) {
             $("btn-close-qr").onclick = () => { $("qr-overlay").classList.add("hidden"); };
         }
+
+        /* ---------- QR camera scanning ---------- */
+        let html5QrCode = null;
+        function stopScanner() {
+            if (html5QrCode) {
+                try { html5QrCode.clear(); } catch (e) {}
+                html5QrCode = null;
+            }
+            if ($("scanner-overlay")) $("scanner-overlay").classList.add("hidden");
+            if ($("qr-scan-result")) $("qr-scan-result").textContent = "—";
+            if ($("qr-scan-error")) $("qr-scan-error").textContent = "";
+        }
+        function startScanner() {
+            const overlay = $("scanner-overlay");
+            const res = $("qr-scan-result"), err = $("qr-scan-error");
+            if (!overlay) return;
+            if (typeof Html5Qrcode === "undefined") {
+                err.textContent = "QR scanner library not loaded.";
+                return;
+            }
+            overlay.classList.remove("hidden");
+            err.textContent = "";
+            res.textContent = "Initializing camera…";
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-video");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { pageSize: 640, facingMode: "environment" },
+                (decoded) => {
+                    res.textContent = "Scanned: " + decoded;
+                    let code = null;
+                    const roomMatch = decoded.match(/room=(\d{6})/);
+                    if (roomMatch) code = roomMatch[1];
+                    if (!code && /^\d{6}$/.test(decoded.trim())) code = decoded.trim();
+                    if (code && $("input-room")) {
+                        $("input-room").value = code;
+                        stopScanner();
+                    }
+                },
+                () => {}
+            ).catch((e) => {
+                err.textContent = (e && e.message) ? e.message : "Camera error";
+                res.textContent = "—";
+            });
+        }
+        if ($("btn-scan-qr")) {
+            $("btn-scan-qr").onclick = () => startScanner();
+        }
+        if ($("btn-scan-stop")) {
+            $("btn-scan-stop").onclick = () => stopScanner();
+        }
+        /* ---------- room visibility toggle + public lobby ---------- */
+        function currentVisibility() {
+            const btn = $("field-visibility") ? $("field-visibility").querySelector(".vis-btn.active") : null;
+            return btn ? btn.getAttribute("data-visibility") : "PRIVATE";
+        }
+        function setVisibility(v) {
+            const row = $("field-visibility");
+            if (!row) return;
+            row.querySelectorAll(".vis-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-visibility") === v));
+        }
+        if ($("btn-vis-private")) {
+            $("btn-vis-private").onclick = () => setVisibility("PRIVATE");
+        }
+        if ($("btn-vis-public")) {
+            $("btn-vis-public").onclick = () => setVisibility("PUBLIC");
+        }
+        async function loadLobby() {
+            const list = $("lobby-list");
+            if (!list) return;
+            list.textContent = "Loading…";
+            try {
+                const data = await G.api.publicRooms();
+                const rooms = (data && data.rooms) ? data.rooms : [];
+                if (!rooms.length) {
+                    list.innerHTML = '<div class="hint">No public rooms right now.</div>';
+                    return;
+                }
+                list.innerHTML = rooms.map(r => {
+                    const canJoin = r.playerCount < 4;
+                    return `<div class="lobby-row"><span class="lobby-code">${r.roomCode} · ${r.mode} · ${r.variant} · ${r.playerCount}/4</span>` +
+                        `<button class="icon-btn" title="Join" ${canJoin ? "" : "disabled"}>▶</button></div>`;
+                }).join("");
+                list.querySelectorAll(".lobby-row button").forEach((b, i) => {
+                    b.onclick = () => joinPublicRoom(rooms[i].roomCode);
+                });
+            } catch (e) {
+                list.innerHTML = '<div class="hint" style="color:var(--bad);">Failed to load lobby</div>';
+            }
+        }
+        async function joinPublicRoom(code) {
+            if (!code) return;
+            const nameInput = $("input-name");
+            const name = nameInput ? nameInput.value.trim() : "";
+            const selected = [name || "Player"];
+            $("input-room").value = code;
+            $("lobby-overlay").classList.add("hidden");
+            await joinOnlineRoom(code, selected);
+        }
+        if ($("btn-lobby")) {
+            $("btn-lobby").onclick = () => { $("lobby-overlay").classList.remove("hidden"); loadLobby(); };
+        }
+        if ($("btn-lobby-refresh")) {
+            $("btn-lobby-refresh").onclick = loadLobby;
+        }
+        if ($("btn-lobby-close")) {
+            $("btn-lobby-close").onclick = () => $("lobby-overlay").classList.add("hidden");
+        }
+
+        window.addEventListener("hashchange", stopScanner);
 
         $("leaderboard-panel").querySelectorAll(".lb-tabs button").forEach(b => {
             b.onclick = () => {
