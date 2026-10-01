@@ -374,33 +374,6 @@
                 style: "filter: drop-shadow(0 0 6px #ff6b6b);"
             }));
 
-            // Head - SVG drawn head (circle with eyes/tongue)
-            const headR = this.tile * 0.16;
-            g.appendChild(this._svgEl("circle", {
-                cx: a.x, cy: a.y, r: headR,
-                fill: "url(#snakeGrad)", stroke: "#7f1d1d", "stroke-width": 2, class: "snake-head"
-            }));
-
-            // Eyes with pupils (positioned relative to head center)
-            [[0.09, 0.09], [-0.09, 0.09]].forEach(([ex, ey]) => {
-                const eyeGroup = this._svgEl("g");
-                eyeGroup.appendChild(this._svgEl("circle", {
-                    cx: a.x + px * this.tile * ex, cy: a.y + py * this.tile * ey,
-                    r: this.tile * 0.06, fill: "#fff", class: "eye"
-                }));
-                eyeGroup.appendChild(this._svgEl("circle", {
-                    cx: a.x + px * this.tile * ex, cy: a.y + py * this.tile * ey,
-                    r: this.tile * 0.025, fill: "#111", class: "pupil"
-                }));
-                g.appendChild(eyeGroup);
-            });
-
-            // Tongue
-            g.appendChild(this._svgEl("path", {
-                d: "M " + a.x + " " + a.y + " l " + (ux * this.tile * 0.25) + " " + (uy * this.tile * 0.25),
-                class: "tongue", "stroke-width": Math.max(2, this.tile * 0.05)
-            }));
-
             this.svg.appendChild(g);
         }
 

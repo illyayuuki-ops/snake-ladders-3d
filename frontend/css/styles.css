@@ -154,10 +154,6 @@ button { font-family: inherit; cursor: pointer; }
 .ladder-g .rung { stroke: #fcd34d; stroke-linecap: round; }
 .snake-shadow { fill: none; stroke: rgba(0,0,0,0.35); stroke-linecap: round; transform: translate(2px,5px); }
 .snake-body { fill: none; stroke: url(#snakeGrad); stroke-linecap: round; }
-.snake-head { fill: url(#snakeGrad); stroke: #7f1d1d; stroke-width: 2; }
-.eye { fill: #fff; }
-.pupil { fill: #111; }
-.tongue { stroke: #ef4444; stroke-linecap: round; fill: none; }
 
 /* ---------- tokens / pawns ---------- */
 .token {
