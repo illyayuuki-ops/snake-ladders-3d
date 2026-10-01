@@ -32,6 +32,9 @@
     --sp-4: 18px;
     --panel-pad: var(--sp-3);
     --panel-gap: var(--sp-2);
+    --field-gap: var(--sp-2);
+    --hud-panel-w: 250px;
+    --hud-panel-gap: 12px;
     font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -395,7 +398,7 @@ button { font-family: inherit; cursor: pointer; }
 /* players */
 #players-panel { position: fixed; left: 12px; top: 84px; width: 210px; padding: var(--panel-pad); z-index: 15;
     display: flex; flex-direction: column; gap: var(--panel-gap); }
-#players-panel h3, #log-panel h3, #leaderboard-panel h3 { margin: 0 0 var(--sp-2); font-size: 13px; letter-spacing: .4px; }
+#players-panel h3, #log-panel h3, #leaderboard-panel h3, #chat-panel h3 { margin: 0 0 var(--sp-2); font-size: 13px; letter-spacing: .4px; color: var(--text); }
 #players-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
 .player-row { display: flex; align-items: center; gap: var(--sp-1); padding: var(--sp-1) var(--sp-2); border-radius: 10px; background: rgba(255,255,255,0.04); }
 .player-row.active { outline: 2px solid var(--accent); background: rgba(110,168,254,0.16); }
@@ -427,16 +430,37 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 .pw-btn:hover { background: rgba(251,191,36,0.26); }
 .pw-btn:disabled { opacity: .4; }
 
+/* Right-side HUD panels - unified width, spacing, alignment */
+#log-panel,
+#chat-panel,
+#leaderboard-panel {
+    position: fixed;
+    right: 12px;
+    width: var(--hud-panel-w);
+    padding: var(--panel-pad);
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: var(--panel-gap);
+}
+#log-panel {
+    top: 84px;
+    max-height: 35vh;
+}
+#chat-panel {
+    top: calc(84px + 35vh + var(--hud-panel-gap));
+    max-height: 25vh;
+}
+#leaderboard-panel {
+    top: calc(84px + 60vh + var(--hud-panel-gap) * 2);
+}
+
 /* log */
-#log-panel { position: fixed; right: 12px; top: 84px; width: 250px; max-height: 35vh; padding: var(--panel-pad); z-index: 15;
-    display: flex; flex-direction: column; gap: var(--panel-gap); }
 #log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-1); font-size: 12px; flex: 1; }
 #log-list li { padding: var(--sp-1) var(--sp-2); border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text); animation: fadeIn .3s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to {opacity:1; transform:none;} }
 
 /* chat panel (online only) - positioned below log panel */
-#chat-panel { position: fixed; right: 12px; top: calc(84px + 35vh + 10px); width: 250px; max-height: 25vh; padding: var(--panel-pad); z-index: 15;
-    display: flex; flex-direction: column; gap: var(--panel-gap); }
 .chat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
 .chat-header h3 { margin: 0; font-size: 13px; letter-spacing: .4px; }
 .chat-messages { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-1); font-size: 12px; flex: 1; }
@@ -448,9 +472,7 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 #chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,168,254,0.15); }
 #chat-input::placeholder { color: var(--muted); opacity: 0.6; }
 
-/* leaderboard - positioned below chat panel (or log panel if chat hidden) */
-#leaderboard-panel { position: fixed; right: 12px; top: calc(84px + 60vh + 15px); width: 250px; padding: var(--panel-pad); z-index: 15;
-    display: flex; flex-direction: column; gap: var(--panel-gap); }
+/* leaderboard */
 .lb-tabs { display: flex; gap: var(--sp-1); margin-bottom: 0; }
 .lb-tabs button { flex: 1; border: 1px solid var(--glass-brd); background: rgba(255,255,255,0.05); color: var(--muted); border-radius: 8px; padding: var(--sp-1); font-size: 11px; font-weight: 700; }
 .lb-tabs button.active { background: rgba(110,168,254,0.2); color: var(--text); border-color: var(--accent); }
@@ -538,11 +560,11 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 .setup-fields {
     flex: 1 1 auto;
     min-height: 0;
-    padding: var(--sp-1) var(--sp-3) var(--sp-2);
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
     display: grid;
     grid-template-columns: 1fr;
     align-content: start;
-    gap: var(--sp-1);
+    gap: var(--field-gap);
     overflow-y: auto;
 }
 
@@ -686,7 +708,7 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 /* Segments */
 .seg {
     display: grid;
-    gap: 6px;
+    gap: var(--field-gap);
 }
 #seg-mode { grid-template-columns: repeat(3, 1fr); }
 #seg-variant { grid-template-columns: repeat(2, 1fr); }
@@ -694,8 +716,8 @@ button.secondary:hover { background: rgba(255,255,255,0.16); }
 .seg.seg-2x2 { grid-template-columns: repeat(2, 1fr); }
 .seg button {
     min-width: 0;
-    height: 36px;
-    padding: 0 8px;
+    height: 40px;
+    padding: 0 12px;
     border: 1px solid var(--glass-brd);
     background: rgba(255,255,255,0.04);
     color: var(--text);
@@ -951,17 +973,23 @@ button.primary.big:focus-visible {
 /* 1366x768 and similar: tighten panel widths and heights */
 @media (max-width: 1400px) and (min-width: 1181px) {
     #players-panel { width: 190px; }
-    #log-panel, #chat-panel, #leaderboard-panel { width: 220px; }
+    #log-panel, #chat-panel, #leaderboard-panel {
+        width: 220px;
+        --hud-panel-w: 220px;
+    }
     #log-panel { max-height: 32vh; }
-    #chat-panel { top: calc(84px + 32vh + 10px); max-height: 25vh; }
-    #leaderboard-panel { top: calc(84px + 57vh + 15px); }
+    #chat-panel { top: calc(84px + 32vh + var(--hud-panel-gap)); max-height: 25vh; }
+    #leaderboard-panel { top: calc(84px + 57vh + var(--hud-panel-gap) * 2); }
 }
 @media (max-width: 1180px) {
     #players-panel { width: 172px; }
-    #log-panel, #chat-panel, #leaderboard-panel { width: 180px; }
+    #log-panel, #chat-panel, #leaderboard-panel {
+        width: 180px;
+        --hud-panel-w: 180px;
+    }
     #log-panel { max-height: 32vh; }
-    #chat-panel { top: calc(84px + 32vh + 10px); max-height: 25vh; }
-    #leaderboard-panel { top: calc(84px + 57vh + 15px); }
+    #chat-panel { top: calc(84px + 32vh + var(--hud-panel-gap)); max-height: 25vh; }
+    #leaderboard-panel { top: calc(84px + 57vh + var(--hud-panel-gap) * 2); }
 }
 @media (max-width: 480px) {
     .setup-card { width: 100%; max-height: 94vh; border-radius: 14px; }
@@ -980,9 +1008,13 @@ button.primary.big:focus-visible {
 }
 @media (max-width: 900px) {
     #players-panel { width: 160px; top: 80px; padding: 10px; }
-    #log-panel { width: 200px; max-height: 28vh; }
-    #chat-panel { width: 200px; top: calc(80px + 28vh + 10px); max-height: 22vh; }
-    #leaderboard-panel { width: 200px; top: calc(80px + 50vh + 12px); }
+    #log-panel, #chat-panel, #leaderboard-panel {
+        width: 200px;
+        --hud-panel-w: 200px;
+    }
+    #log-panel { max-height: 28vh; }
+    #chat-panel { top: calc(80px + 28vh + var(--hud-panel-gap)); max-height: 22vh; }
+    #leaderboard-panel { top: calc(80px + 50vh + var(--hud-panel-gap) * 2); }
     .top-stats { gap: 12px; }
 }
 @media (max-width: 680px) {
