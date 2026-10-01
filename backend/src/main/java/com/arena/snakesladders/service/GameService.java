@@ -123,7 +123,11 @@ public class GameService {
         synchronized (rooms) {
             for (Room room : rooms.values()) {
                 if ("PUBLIC".equals(room.visibility) && room.players.size() < MAX_PLAYERS) {
-                    result.add(room.toInfo());
+                    GameSession session = sessions.get(room.code);
+                    // Only include rooms where the game has not started (no session or session is WAITING)
+                    if (session == null || session.status == GameStateResponse.GameStatus.WAITING) {
+                        result.add(room.toInfo());
+                    }
                 }
             }
         }

@@ -168,8 +168,6 @@
                     createRetroMusic();
                 }
             });
-            G.bgMusic.node = audioEl;
-            G.bgMusic.playing = true;
             return;
         }
         if (!G.audio) return;
@@ -1429,13 +1427,21 @@
                 err.textContent = "QR scanner library not loaded.";
                 return;
             }
+            // Insecure context check: camera requires HTTPS except on localhost
+            const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+            if (location.protocol === "http:" && !isLocalhost) {
+                err.textContent = "Camera requires HTTPS — use the code input instead";
+                overlay.classList.remove("hidden");
+                res.textContent = "—";
+                return;
+            }
             overlay.classList.remove("hidden");
             err.textContent = "";
             res.textContent = "Initializing camera…";
             if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-video");
             html5QrCode.start(
                 { facingMode: "environment" },
-                { pageSize: 640, facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
                 (decoded) => {
                     res.textContent = "Scanned: " + decoded;
                     let code = null;
