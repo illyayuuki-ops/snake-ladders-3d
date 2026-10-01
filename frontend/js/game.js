@@ -744,7 +744,7 @@
     /* ---------------- leaderboard ---------------- */
     function loadLeaderboard(by) {
         // Fetch from API with "me" parameter to include current player
-        G.api.leaderboard(by, 10, G.myName).then(data => renderLeaderboard(data, by)).catch(() => renderLocalLeaderboard(by));
+        G.api.leaderboard(by, 10, G.myName).then(data => renderLeaderboard(data, by)).catch(() => renderLocalLeaderboard(by, true));
     }
 
     function loadLocalLeaderboard() {
@@ -797,13 +797,19 @@
             ol.appendChild(li);
         }
     }
-    function renderLocalLeaderboard(by) {
+    function renderLocalLeaderboard(by, offline) {
         const lb = loadLocalLeaderboard();
         let sorted = lb.slice();
         if (by === "wins") sorted.sort((a, b) => b.totalWins - a.totalWins || a.totalGames - b.totalGames);
         else if (by === "fastest") sorted.sort((a, b) => (a.fastestWinTurns || 1e9) - (b.fastestWinTurns || 1e9));
         else sorted.sort((a, b) => (b.totalWins / (b.totalGames || 1)) - (a.totalWins / (a.totalGames || 1)));
         const ol = $("leaderboard-list"); ol.innerHTML = "";
+        if (offline) {
+            const li = document.createElement("li");
+            li.className = "lb-offline";
+            li.textContent = "Offline \u2014 local stats";
+            ol.appendChild(li);
+        }
         sorted.slice(0, 10).forEach((e, i) => {
             const li = document.createElement("li");
             const meta = by === "fastest" ? (e.fastestWinTurns != null ? e.fastestWinTurns + " turns" : "—")
@@ -971,6 +977,8 @@
         // Wire up reconnect re-sync: when WebSocket reconnects, _syncStates fetches
         // the room state via REST and invokes this callback to apply it.
         G.api.setOnSync(st => applyState(st, false));
+        // Wire up connection degraded notification (WS -> REST fallback)
+        G.api.setOnDegraded(msg => toast(msg));
         // Host's Start button triggers the authoritative session via REST. The
         // backend (createAndStartSession) builds the board and broadcasts the
         // initial STATE, which this client renders through onWs.
@@ -1037,6 +1045,8 @@
         G.api.subscribeRoom(roomCode, onWs);
         // Wire up reconnect re-sync for joiners as well.
         G.api.setOnSync(st => applyState(st, false));
+        // Wire up connection degraded notification (WS -> REST fallback)
+        G.api.setOnDegraded(msg => toast(msg));
         // Best-effort REST re-sync of room metadata (tolerant of no live session yet).
         // The authoritative game state is delivered via WebSocket STATE broadcasts.
         try {

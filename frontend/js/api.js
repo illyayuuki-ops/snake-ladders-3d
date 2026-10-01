@@ -29,7 +29,11 @@
                 throw new Error(msg);
             }
             if (res.status === 204) return null;
-            return res.json();
+            try {
+                return await res.json();
+            } catch (e) {
+                throw new Error("Server error " + res.status);
+            }
         }
         get(url) { return this._req("GET", url); }
         post(url, body) { return this._req("POST", url, body); }
@@ -74,14 +78,18 @@
                             resolve(true);
                         }, () => {
                             this.ws = null;
+                            // Fire callback for connection degraded notification
+                            if (this._onDegraded) this._onDegraded("Connection degraded \u2014 playing via REST");
                             resolve(false);
                         });
                     } else {
                         this.ws = null;
+                        if (this._onDegraded) this._onDegraded("Connection degraded \u2014 playing via REST");
                         resolve(false);
                     }
                 } catch (e) {
                     this.ws = null;
+                    if (this._onDegraded) this._onDegraded("Connection degraded \u2014 playing via REST");
                     resolve(false);
                 }
             });
@@ -128,12 +136,16 @@
                 const st = await this.get("/rooms/" + enc(roomCode.toUpperCase()));
                 return st || null;
             } catch (e) {
+                if (this._onDegraded) this._onDegraded("REST unreachable \u2014 offline mode");
                 return null;
             }
         }
 
         /** Set a callback invoked after a REST re-sync completes. */
         setOnSync(fn) { this._onSync = fn; }
+
+        /** Set a callback invoked when WebSocket degrades to REST. */
+        setOnDegraded(fn) { this._onDegraded = fn; }
 
         /** Trigger a REST re-sync for the current room (used on WebSocket reconnect). */
         async _syncStates() {
