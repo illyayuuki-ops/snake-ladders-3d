@@ -8,11 +8,17 @@
     const COLS = 10;
     const SVGNS = "http://www.w3.org/2000/svg";
 
+    // Performance helpers
+    const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isSmallScreen = () => window.innerWidth < 680;
+
     // ===== Particle System =====
     class ParticleSystem {
         constructor(boardEl) {
             this.boardEl = boardEl;
             this.particles = [];
+            this.maxParticles = 60; // cap active particles
+            this.pool = []; // particle pool for reuse
             this.container = document.createElement("div");
             this.container.className = "particle-container";
             this.container.style.cssText = `
@@ -22,8 +28,30 @@
             boardEl.appendChild(this.container);
         }
 
+        _shouldSkip() {
+            return prefersReducedMotion() || isSmallScreen();
+        }
+
+        _getPooledParticle() {
+            if (this.pool.length > 0) {
+                return this.pool.pop();
+            }
+            return document.createElement("div");
+        }
+
+        _returnToPool(p) {
+            p.style.opacity = "0";
+            p.style.transform = "translate3d(0,0,0)";
+            if (this.pool.length < this.maxParticles) {
+                this.pool.push(p);
+            }
+        }
+
         addParticle(x, y, z, options = {}) {
-            const p = document.createElement("div");
+            if (this._shouldSkip()) return;
+            if (this.particles.length >= this.maxParticles) return;
+
+            const p = this._getPooledParticle();
             const size = options.size || 8;
             const color = options.color || "#fde68a";
             const life = options.life || 800;
@@ -42,36 +70,44 @@
             `;
 
             this.container.appendChild(p);
-            this.particles.push({ el: p, x, y, z, velocity, gravity, life, born: performance.now() });
+            const particleData = { el: p, x, y, z, velocity, gravity, life, born: performance.now() };
+            this.particles.push(particleData);
 
-            // Animation
+            // Animation using transform only (composited)
             const animate = () => {
-                const elapsed = performance.now() - this.particles.find(pr => pr.el === p)?.born || 0;
+                const elapsed = performance.now() - particleData.born;
                 if (elapsed >= life) {
                     p.remove();
-                    this.particles = this.particles.filter(pr => pr.el !== p);
+                    this.particles = this.particles.filter(pr => pr !== particleData);
+                    this._returnToPool(p);
                     return;
                 }
                 const progress = elapsed / life;
-                const part = this.particles.find(pr => pr.el === p);
-                if (!part) return;
-                part.velocity.y += part.gravity;
-                part.x += part.velocity.x;
-                part.y += part.velocity.y;
-                part.z += part.velocity.z;
-                p.style.transform = `translateZ(${part.z}px) translate3d(${part.x}px, ${part.y}px, 0)`;
+                particleData.velocity.y += particleData.gravity;
+                particleData.x += particleData.velocity.x;
+                particleData.y += particleData.velocity.y;
+                particleData.z += particleData.velocity.z;
+                p.style.transform = `translateZ(${particleData.z}px) translate3d(${particleData.x}px, ${particleData.y}px, 0)`;
                 p.style.opacity = 1 - progress;
                 requestAnimationFrame(animate);
             };
             requestAnimationFrame(animate);
 
-            // Cleanup
-            setTimeout(() => { if (p.parentNode) p.remove(); }, life + 50);
+            // Cleanup fallback
+            setTimeout(() => {
+                if (p.parentNode) {
+                    p.remove();
+                    this.particles = this.particles.filter(pr => pr !== particleData);
+                    this._returnToPool(p);
+                }
+            }, life + 50);
         }
 
         burst(x, y, z, count, color, options = {}) {
-            for (let i = 0; i < count; i++) {
-                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+            if (this._shouldSkip()) return;
+            const cappedCount = Math.min(count, this.maxParticles - this.particles.length);
+            for (let i = 0; i < cappedCount; i++) {
+                const angle = (Math.PI * 2 * i) / cappedCount + Math.random() * 0.5;
                 const speed = options.speed || (2 + Math.random() * 3);
                 this.addParticle(x, y, z, {
                     color,
@@ -88,7 +124,7 @@
         }
 
         clear() {
-            this.particles.forEach(p => p.el.remove());
+            this.particles.forEach(p => { p.el.remove(); this._returnToPool(p.el); });
             this.particles = [];
         }
     }
@@ -373,6 +409,74 @@
                 "stroke-width": this.tile * 0.28,
                 style: "filter: drop-shadow(0 0 6px #ff6b6b);"
             }));
+
+            // Drawn snake head at curve start (a.x, a.y)
+            const headR = this.tile * 0.3;
+            const eyeR = this.tile * 0.08;
+            const pupilR = this.tile * 0.04;
+            const tongueLen = this.tile * 0.18;
+
+            // Direction vector at curve start (tangent to quadratic bezier at t=0)
+            // Quadratic bezier derivative at t=0: 2*(cx - a.x, cy - a.y)
+            const tx = 2 * (cx - a.x);
+            const ty = 2 * (cy - a.y);
+            const tlen = Math.hypot(tx, ty) || 1;
+            const dx_head = tx / tlen;
+            const dy_head = ty / tlen;
+            // Perpendicular for eye offset
+            const px_head = -dy_head;
+            const py_head = dx_head;
+
+            const headAngle = Math.atan2(dy_head, dx_head) * 180 / Math.PI;
+
+            // Head group with rotation transform
+            const headG = this._svgEl("g", {
+                "class": "snake-head-group",
+                transform: `translate(${a.x}, ${a.y}) rotate(${headAngle})`
+            });
+
+            // Head circle (slightly wider)
+            headG.appendChild(this._svgEl("ellipse", {
+                cx: 0, cy: 0,
+                rx: headR, ry: headR * 0.85,
+                "class": "snake-head"
+            }));
+
+            // Eyes - two white circles with dark pupils
+            const eyeOffset = headR * 0.55;
+            const eyeY = -headR * 0.15;
+            // Left eye
+            headG.appendChild(this._svgEl("circle", {
+                cx: -eyeOffset, cy: eyeY, r: eyeR, "class": "eye"
+            }));
+            headG.appendChild(this._svgEl("circle", {
+                cx: -eyeOffset, cy: eyeY, r: pupilR, "class": "pupil"
+            }));
+            // Right eye
+            headG.appendChild(this._svgEl("circle", {
+                cx: eyeOffset, cy: eyeY, r: eyeR, "class": "eye"
+            }));
+            headG.appendChild(this._svgEl("circle", {
+                cx: eyeOffset, cy: eyeY, r: pupilR, "class": "pupil"
+            }));
+
+            // Forked tongue - two short lines extending forward
+            const tongueBase = headR * 0.9;
+            const forkSpread = headR * 0.35;
+            headG.appendChild(this._svgEl("path", {
+                d: `M 0 ${tongueBase} L 0 ${tongueBase + tongueLen}`,
+                "class": "tongue"
+            }));
+            headG.appendChild(this._svgEl("path", {
+                d: `M -${forkSpread * 0.3} ${tongueBase} L -${forkSpread} ${tongueBase + tongueLen}`,
+                "class": "tongue"
+            }));
+            headG.appendChild(this._svgEl("path", {
+                d: `M ${forkSpread * 0.3} ${tongueBase} L ${forkSpread} ${tongueBase + tongueLen}`,
+                "class": "tongue"
+            }));
+
+            g.appendChild(headG);
 
             this.svg.appendChild(g);
         }
