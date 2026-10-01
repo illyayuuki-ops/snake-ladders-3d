@@ -31,25 +31,7 @@
     <header id="hud-top" class="glass">
         <div class="brand">
             <span class="logo">
-                <svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#7c5cff"/>
-                            <stop offset="50%" stop-color="#6ea8fe"/>
-                            <stop offset="100%" stop-color="#00d4ff"/>
-                        </linearGradient>
-                    </defs>
-                    <circle cx="32" cy="32" r="30" fill="url(#badgeGrad)" />
-                    <g fill="#08122b">
-                        <circle cx="22" cy="22" r="4" />
-                        <circle cx="42" cy="22" r="4" />
-                        <circle cx="22" cy="32" r="4" />
-                        <circle cx="32" cy="32" r="4" />
-                        <circle cx="42" cy="32" r="4" />
-                        <circle cx="22" cy="42" r="4" />
-                        <circle cx="42" cy="42" r="4" />
-                    </g>
-                </svg>
+                <img src="/assets/logo.png" alt="Snakes & Ladders 3D" width="28" height="28" />
             </span>
             <div>
                 <div class="title">Snakes & Ladders <b>3D</b></div>
@@ -103,7 +85,8 @@
         </div>
         <ul id="chat-messages" class="chat-messages"></ul>
         <div class="chat-input-row">
-            <input id="chat-input" type="text" placeholder="Type a message…" maxlength="200" autocomplete="off" />
+            <label for="chat-input" class="hidden">Chat message</label>
+            <input id="chat-input" name="chat-message" type="text" placeholder="Type a message…" maxlength="200" autocomplete="off" />
             <button id="btn-chat-send" class="icon-btn" title="Send" style="font-size: 14px;">➤</button>
         </div>
     </aside>
@@ -148,7 +131,7 @@
                     <div class="field">
                         <label for="input-name">Your Name</label>
                         <div class="name-row">
-                            <input id="input-name" list="known-players" type="text" maxlength="18" placeholder="Enter your name" autocomplete="off" />
+                            <input id="input-name" name="player-name" list="known-players" type="text" maxlength="18" placeholder="Enter your name" autocomplete="off" />
                             <datalist id="known-players"></datalist>
                             <button id="btn-search-player" type="button" class="search-btn" aria-label="Search player" title="Search known players">🔍</button>
                         </div>
@@ -158,7 +141,7 @@
                 <!-- MODE -->
                 <div class="setup-section" id="field-mode">
                     <div class="field">
-                        <label for="seg-mode">Mode</label>
+                        <span class="field-label">Mode</span>
                         <div class="seg" id="seg-mode" role="radiogroup" aria-label="Game mode">
                             <button data-mode="VS_AI" role="radio" aria-checked="false">VS AI</button>
                             <button data-mode="LOCAL" class="active" role="radio" aria-checked="true">Local</button>
@@ -170,7 +153,7 @@
                 <!-- VARIANT (2x2 grid) -->
                 <div class="setup-section" id="field-variant">
                     <div class="field">
-                        <label for="seg-variant">Board Variant</label>
+                        <span class="field-label">Board Variant</span>
                         <div class="seg seg-2x2" id="seg-variant" role="radiogroup" aria-label="Board variant">
                             <button data-variant="CLASSIC" class="active" role="radio" aria-checked="true">Classic</button>
                             <button data-variant="POWERUP" role="radio" aria-checked="false">Power-Up</button>
@@ -183,7 +166,7 @@
                 <!-- DIFFICULTY (VS_AI only) -->
                 <div class="setup-section hidden" id="field-difficulty">
                     <div class="field">
-                        <label for="seg-difficulty">AI Difficulty</label>
+                        <span class="field-label">AI Difficulty</span>
                         <div class="seg" id="seg-difficulty" role="radiogroup" aria-label="AI difficulty">
                             <button data-diff="EASY" class="active" role="radio" aria-checked="true">Easy</button>
                             <button data-diff="SMART" role="radio" aria-checked="false">Smart</button>
@@ -196,7 +179,7 @@
                     <div class="field">
                         <label id="local-count-label" for="input-local-count">Players</label>
                         <div class="count-row">
-                            <input id="input-local-count" type="range" min="2" max="4" value="2" />
+                            <input id="input-local-count" name="local-player-count" type="range" min="2" max="4" value="2" />
                             <output id="local-count-value" for="input-local-count">2</output>
                         </div>
                     </div>
@@ -210,7 +193,7 @@
                     <div class="field">
                         <label for="input-room">Room Code</label>
                         <div class="room-row">
-                            <input id="input-room" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code (empty = create room)" autocomplete="off" title="Enter a 6-digit room code to join, or leave empty to create a new room" />
+                            <input id="input-room" name="room-code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code (empty = create room)" autocomplete="off" title="Enter a 6-digit room code to join, or leave empty to create a new room" />
                         </div>
                     </div>
                     <div class="field">
@@ -244,8 +227,8 @@
             <div id="qr-code" class="qr-code"></div>
             <div id="qr-room-code" class="room-code-display">—</div>
             <div class="field">
-                <label>Host Address</label>
-                <input id="input-host" type="text" placeholder="localhost:8080" autocomplete="off" />
+                <label for="input-host">Host Address</label>
+                <input id="input-host" name="host-address" type="text" placeholder="localhost:8080" autocomplete="off" />
                 <p class="hint">Enter your computer's IP or hostname so phones can connect.</p>
             </div>
             <button id="btn-start-online" class="primary big hidden">▶ Start Game</button>
@@ -266,7 +249,7 @@
             <p class="riddle-hint">Answer correctly to dodge the snake!</p>
             <div id="riddle-question" class="riddle-question"></div>
             <div id="riddle-choices" class="riddle-choices"></div>
-            <input type="text" id="riddle-input" class="riddle-input hidden" placeholder="Type your answer..." />
+            <input type="text" id="riddle-input" name="riddle-answer" class="riddle-input hidden" placeholder="Type your answer..." />
             <div class="riddle-timer-row">
                 <span id="riddle-timer" class="riddle-timer">15</span>
                 <span class="riddle-timer-label">seconds</span>

@@ -1329,13 +1329,26 @@ if (st.lastEvent.kind === "SLIDE") {
 
         container.innerHTML = "";
         for (let i = 0; i < count; i++) {
+            const inputId = `local-name-${i + 1}`;
+            const labelEl = document.createElement("label");
+            labelEl.htmlFor = inputId;
+            labelEl.textContent = `Player ${i + 1}`;
+            labelEl.style.cssText = "display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;line-height:1.2;";
+
             const input = document.createElement("input");
             input.type = "text";
+            input.id = inputId;
+            input.name = `local-name-${i + 1}`;
             input.maxLength = 18;
             input.placeholder = `Player ${i + 1} name`;
             input.autocomplete = "off";
             input.value = currentNames[i] || (i === 0 ? ($("input-name")?.value?.trim() || "") : "");
-            container.appendChild(input);
+            input.style.cssText = "width:100%;min-width:0;border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;border:1px solid var(--glass-brd);background:rgba(255,255,255,0.04);color:var(--text);transition:border-color 0.15s,box-shadow 0.15s,background 0.15s;";
+
+            const wrapper = document.createElement("div");
+            wrapper.appendChild(labelEl);
+            wrapper.appendChild(input);
+            container.appendChild(wrapper);
         }
     }
 
