@@ -1666,12 +1666,12 @@ if (st.lastEvent.kind === "SLIDE") {
                     </label>
                 </div>
                 <div class="sound-row">
-                    <label>Music Volume</label>
+                    <label for="music-volume">Music Volume</label>
                     <input type="range" id="music-volume" min="0" max="1" step="0.05" value="${G.bgMusic.volume}">
                     <output id="music-volume-val">${Math.round(G.bgMusic.volume * 100)}%</output>
                 </div>
                 <div class="sound-row">
-                    <label>SFX Volume</label>
+                    <label for="sfx-volume">SFX Volume</label>
                     <input type="range" id="sfx-volume" min="0" max="1" step="0.05" value="${G.sfxVolume}">
                     <output id="sfx-volume-val">${Math.round(G.sfxVolume * 100)}%</output>
                 </div>

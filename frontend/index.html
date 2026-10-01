@@ -39,10 +39,10 @@
             </div>
         </div>
         <div class="top-stats">
-            <div class="stat"><label>Room</label><span id="room-code">—</span></div>
-            <div class="stat"><label>Turn</label><span id="turn-count">0</span></div>
-            <div class="stat"><label>Variant</label><span id="variant-label">—</span></div>
-            <div class="stat timer-stat" id="turn-timer-stat" style="display:none;"><label>⏱</label><span id="turn-timer">60</span></div>
+            <div class="stat"><span class="stat-label">Room</span><span id="room-code">—</span></div>
+            <div class="stat"><span class="stat-label">Turn</span><span id="turn-count">0</span></div>
+            <div class="stat"><span class="stat-label">Variant</span><span id="variant-label">—</span></div>
+            <div class="stat timer-stat" id="turn-timer-stat" style="display:none;"><span class="stat-label">⏱</span><span id="turn-timer">60</span></div>
         </div>
         <div class="top-actions">
             <button id="btn-sound" class="icon-btn" title="Toggle sound">🔊</button>
@@ -267,6 +267,7 @@
             <p class="riddle-hint">Answer correctly to dodge the snake!</p>
             <div id="riddle-question" class="riddle-question"></div>
             <div id="riddle-choices" class="riddle-choices"></div>
+            <label for="riddle-input" class="hidden">Riddle answer</label>
             <input type="text" id="riddle-input" name="riddle-answer" class="riddle-input hidden" placeholder="Type your answer..." />
             <div class="riddle-timer-row">
                 <span id="riddle-timer" class="riddle-timer">15</span>
